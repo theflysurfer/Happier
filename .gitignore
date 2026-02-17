@@ -1,0 +1,29 @@
+# Logs and debug files
+wa-logs.txt
+mcp-logs.txt
+logs/
+*.log
+
+# Device dumps (malformed paths from adb)
+C:Devhb*
+C?Devhb*
+*activity_top.txt
+*logcat_recent.txt
+
+# Temp files
+tmp/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment secrets
+.env
+.env*.local
+
+# Claude Code local settings
+.claude/settings.local.json
+CLAUDE.local.md
+
+# MCP local config
+.mcp.json
