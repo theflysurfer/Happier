@@ -14,6 +14,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useUnistyles } from 'react-native-unistyles';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { parseMarkdownToBlocks, exportDiff } from '../parser';
 import { EditorMode, PlannotatorMode, ReviewTag } from '../types';
@@ -53,6 +54,7 @@ export const PlannotatorModal: React.FC<PlannotatorModalProps> = ({
 }) => {
   const { theme } = useUnistyles();
   const { width: screenWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
 
   // Responsive layout: side panel on web/wide screens, bottom panel on mobile/narrow
   const isWideScreen = Platform.OS === 'web' || screenWidth >= MOBILE_BREAKPOINT;
@@ -333,7 +335,8 @@ export const PlannotatorModal: React.FC<PlannotatorModalProps> = ({
             justifyContent: 'flex-end',
             alignItems: 'center',
             paddingHorizontal: 16,
-            paddingVertical: 12,
+            paddingTop: 12,
+            paddingBottom: 12 + insets.bottom,
             borderTopWidth: 1,
             borderTopColor: theme.colors.divider,
             backgroundColor: theme.colors.surface,
