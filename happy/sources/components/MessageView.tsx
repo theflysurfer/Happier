@@ -19,7 +19,7 @@ export const MessageView = (props: {
   getMessageById?: (id: string) => Message | null;
 }) => {
   return (
-    <View style={styles.messageContainer} renderToHardwareTextureAndroid={true}>
+    <View style={styles.messageContainer}>
       <View style={styles.messageContent}>
         <RenderBlock
           message={props.message}
