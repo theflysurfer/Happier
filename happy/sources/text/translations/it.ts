@@ -59,6 +59,7 @@ export const it: TranslationStructure = {
         retry: 'Riprova',
         delete: 'Elimina',
         optional: 'opzionale',
+        share: 'Condividi',
         saveAs: 'Salva con nome',
     },
 
@@ -571,6 +572,8 @@ export const it: TranslationStructure = {
         projectRoot: 'Radice progetto',
         stagedChanges: ({ count }: { count: number }) => `Modifiche in stage (${count})`,
         unstagedChanges: ({ count }: { count: number }) => `Modifiche non in stage (${count})`,
+        browse: 'Sfoglia',
+        changes: 'Modifiche',
         // File viewer strings
         loadingFile: ({ fileName }: { fileName: string }) => `Caricamento ${fileName}...`,
         binaryFile: 'File binario',
@@ -926,6 +929,9 @@ export const it: TranslationStructure = {
         confirmDelete: ({ name }: { name: string }) => `Are you sure you want to delete "${name}"?`,
         emptyFolder: 'This folder is empty',
         browseFiles: 'Browse Files',
+        cut: 'Taglia',
+        paste: 'Incolla',
+        search: 'Cerca file...',
     },
 
     // TODO: Translate to target language
@@ -968,6 +974,31 @@ export const it: TranslationStructure = {
         tagFix: '@FIX',
         tagVerify: '@VERIFY',
         tagOk: '@OK',
+    },
+
+    // Plannotator
+    plannotator: {
+        reviewPlan: 'Revisiona Piano',
+        copyPlan: 'Copia piano',
+        copySummary: 'Copia Riepilogo',
+        redline: 'Redline',
+        select: 'Seleziona',
+        panel: 'Pannello',
+        redlineMode: 'Modalità Redline',
+        selectionMode: 'Modalità Selezione',
+        addComment: 'Aggiungi Commento',
+        comment: 'Commento',
+        globalComment: 'Commento Globale',
+        delete: 'Elimina',
+        insert: 'Inserisci',
+        replace: 'Sostituisci',
+        global: 'Globale',
+        enterComment: 'Inserisci il tuo commento...',
+        yourFeedback: 'Il tuo feedback...',
+        on: 'Su',
+        sendFeedback: 'Invia Feedback',
+        approve: 'Approva',
+        noChanges: 'Nessuna modifica rilevata.',
     },
 
 } as const;

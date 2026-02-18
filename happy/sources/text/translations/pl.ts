@@ -71,6 +71,7 @@ export const pl: TranslationStructure = {
         retry: 'Ponów',
         delete: 'Usuń',
         optional: 'opcjonalnie',
+        share: 'Udostępnij',
     },
 
     profile: {
@@ -552,6 +553,8 @@ export const pl: TranslationStructure = {
         projectRoot: 'Katalog główny projektu',
         stagedChanges: ({ count }: { count: number }) => `Przygotowane zmiany (${count})`,
         unstagedChanges: ({ count }: { count: number }) => `Nieprzygotowane zmiany (${count})`,
+        browse: 'Przeglądaj',
+        changes: 'Zmiany',
         // File viewer strings
         loadingFile: ({ fileName }: { fileName: string }) => `Ładowanie ${fileName}...`,
         binaryFile: 'Plik binarny',
@@ -951,6 +954,9 @@ export const pl: TranslationStructure = {
         confirmDelete: ({ name }: { name: string }) => `Are you sure you want to delete "${name}"?`,
         emptyFolder: 'This folder is empty',
         browseFiles: 'Browse Files',
+        cut: 'Wytnij',
+        paste: 'Wklej',
+        search: 'Szukaj plików...',
     },
 
     // TODO: Translate to target language
@@ -993,6 +999,31 @@ export const pl: TranslationStructure = {
         tagFix: '@FIX',
         tagVerify: '@VERIFY',
         tagOk: '@OK',
+    },
+
+    // Plannotator
+    plannotator: {
+        reviewPlan: 'Przegląd planu',
+        copyPlan: 'Kopiuj plan',
+        copySummary: 'Kopiuj podsumowanie',
+        redline: 'Redline',
+        select: 'Wybierz',
+        panel: 'Panel',
+        redlineMode: 'Tryb Redline',
+        selectionMode: 'Tryb wyboru',
+        addComment: 'Dodaj komentarz',
+        comment: 'Komentarz',
+        globalComment: 'Komentarz globalny',
+        delete: 'Usuń',
+        insert: 'Wstaw',
+        replace: 'Zamień',
+        global: 'Globalny',
+        enterComment: 'Wpisz swój komentarz...',
+        yourFeedback: 'Twoja opinia...',
+        on: 'Do',
+        sendFeedback: 'Wyślij opinię',
+        approve: 'Zatwierdź',
+        noChanges: 'Nie wykryto zmian.',
     },
 
 } as const;

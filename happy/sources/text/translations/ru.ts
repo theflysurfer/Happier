@@ -71,6 +71,7 @@ export const ru: TranslationStructure = {
         retry: 'Повторить',
         delete: 'Удалить',
         optional: 'необязательно',
+        share: 'Поделиться',
     },
 
     connect: {
@@ -552,6 +553,8 @@ export const ru: TranslationStructure = {
         projectRoot: 'Корень проекта',
         stagedChanges: ({ count }: { count: number }) => `Подготовленные изменения (${count})`,
         unstagedChanges: ({ count }: { count: number }) => `Неподготовленные изменения (${count})`,
+        browse: 'Обзор',
+        changes: 'Изменения',
         // File viewer strings
         loadingFile: ({ fileName }: { fileName: string }) => `Загрузка ${fileName}...`,
         binaryFile: 'Бинарный файл',
@@ -950,6 +953,9 @@ export const ru: TranslationStructure = {
         confirmDelete: ({ name }: { name: string }) => `Are you sure you want to delete "${name}"?`,
         emptyFolder: 'This folder is empty',
         browseFiles: 'Browse Files',
+        cut: 'Вырезать',
+        paste: 'Вставить',
+        search: 'Поиск файлов...',
     },
 
     // TODO: Translate to target language
@@ -992,6 +998,31 @@ export const ru: TranslationStructure = {
         tagFix: '@FIX',
         tagVerify: '@VERIFY',
         tagOk: '@OK',
+    },
+
+    // Plannotator
+    plannotator: {
+        reviewPlan: 'Обзор плана',
+        copyPlan: 'Копировать план',
+        copySummary: 'Копировать резюме',
+        redline: 'Зачёркивание',
+        select: 'Выбор',
+        panel: 'Панель',
+        redlineMode: 'Режим зачёркивания',
+        selectionMode: 'Режим выбора',
+        addComment: 'Добавить комментарий',
+        comment: 'Комментарий',
+        globalComment: 'Общий комментарий',
+        delete: 'Удалить',
+        insert: 'Вставить',
+        replace: 'Заменить',
+        global: 'Глобальный',
+        enterComment: 'Введите ваш комментарий...',
+        yourFeedback: 'Ваш отзыв...',
+        on: 'К',
+        sendFeedback: 'Отправить отзыв',
+        approve: 'Подтвердить',
+        noChanges: 'Изменения не обнаружены.',
     },
 
 } as const;

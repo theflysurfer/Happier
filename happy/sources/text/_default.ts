@@ -60,6 +60,7 @@ export const en = {
         retry: 'Retry',
         delete: 'Delete',
         optional: 'optional',
+        share: 'Share',
     },
 
     profile: {
@@ -541,6 +542,8 @@ export const en = {
         projectRoot: 'Project root',
         stagedChanges: ({ count }: { count: number }) => `Staged Changes (${count})`,
         unstagedChanges: ({ count }: { count: number }) => `Unstaged Changes (${count})`,
+        browse: 'Browse',
+        changes: 'Changes',
         // File viewer strings
         loadingFile: ({ fileName }: { fileName: string }) => `Loading ${fileName}...`,
         binaryFile: 'Binary File',
@@ -926,6 +929,9 @@ export const en = {
         confirmDelete: ({ name }: { name: string }) => `Are you sure you want to delete "${name}"?`,
         emptyFolder: 'This folder is empty',
         browseFiles: 'Browse Files',
+        cut: 'Cut',
+        paste: 'Paste',
+        search: 'Search files...',
     },
 
     editor: {
@@ -965,6 +971,30 @@ export const en = {
         tagFix: '@FIX',
         tagVerify: '@VERIFY',
         tagOk: '@OK',
+    },
+
+    plannotator: {
+        reviewPlan: 'Review Plan',
+        copyPlan: 'Copy plan',
+        copySummary: 'Copy Summary',
+        redline: 'Redline',
+        select: 'Select',
+        panel: 'Panel',
+        redlineMode: 'Redline Mode',
+        selectionMode: 'Selection Mode',
+        addComment: 'Add Comment',
+        comment: 'Comment',
+        globalComment: 'Global Comment',
+        delete: 'Delete',
+        insert: 'Insert',
+        replace: 'Replace',
+        global: 'Global',
+        enterComment: 'Enter your comment...',
+        yourFeedback: 'Your feedback...',
+        on: 'On',
+        sendFeedback: 'Send Feedback',
+        approve: 'Approve',
+        noChanges: 'No changes detected.',
     },
 } as const;
 

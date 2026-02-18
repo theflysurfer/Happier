@@ -60,6 +60,7 @@ export const pt: TranslationStructure = {
         retry: 'Tentar novamente',
         delete: 'Excluir',
         optional: 'Opcional',
+        share: 'Compartilhar',
     },
 
     profile: {
@@ -542,6 +543,8 @@ export const pt: TranslationStructure = {
         projectRoot: 'Raiz do projeto',
         stagedChanges: ({ count }: { count: number }) => `Alterações preparadas (${count})`,
         unstagedChanges: ({ count }: { count: number }) => `Alterações não preparadas (${count})`,
+        browse: 'Navegar',
+        changes: 'Alterações',
         // File viewer strings
         loadingFile: ({ fileName }: { fileName: string }) => `Carregando ${fileName}...`,
         binaryFile: 'Arquivo binário',
@@ -926,6 +929,9 @@ export const pt: TranslationStructure = {
         confirmDelete: ({ name }: { name: string }) => `Are you sure you want to delete "${name}"?`,
         emptyFolder: 'This folder is empty',
         browseFiles: 'Browse Files',
+        cut: 'Recortar',
+        paste: 'Colar',
+        search: 'Pesquisar arquivos...',
     },
 
     // TODO: Translate to target language
@@ -968,6 +974,31 @@ export const pt: TranslationStructure = {
         tagFix: '@FIX',
         tagVerify: '@VERIFY',
         tagOk: '@OK',
+    },
+
+    // Plannotator
+    plannotator: {
+        reviewPlan: 'Revisar Plano',
+        copyPlan: 'Copiar plano',
+        copySummary: 'Copiar Resumo',
+        redline: 'Redline',
+        select: 'Selecionar',
+        panel: 'Painel',
+        redlineMode: 'Modo Redline',
+        selectionMode: 'Modo Seleção',
+        addComment: 'Adicionar Comentário',
+        comment: 'Comentário',
+        globalComment: 'Comentário Global',
+        delete: 'Excluir',
+        insert: 'Inserir',
+        replace: 'Substituir',
+        global: 'Global',
+        enterComment: 'Digite seu comentário...',
+        yourFeedback: 'Seu feedback...',
+        on: 'Sobre',
+        sendFeedback: 'Enviar Feedback',
+        approve: 'Aprovar',
+        noChanges: 'Nenhuma alteração detectada.',
     },
 
 } as const;

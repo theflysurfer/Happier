@@ -62,6 +62,7 @@ export const ja: TranslationStructure = {
         retry: '再試行',
         delete: '削除',
         optional: '任意',
+        share: '共有',
         saveAs: '名前を付けて保存',
     },
 
@@ -574,6 +575,8 @@ export const ja: TranslationStructure = {
         projectRoot: 'プロジェクトルート',
         stagedChanges: ({ count }: { count: number }) => `ステージ済みの変更 (${count})`,
         unstagedChanges: ({ count }: { count: number }) => `未ステージの変更 (${count})`,
+        browse: 'ブラウズ',
+        changes: '変更',
         // File viewer strings
         loadingFile: ({ fileName }: { fileName: string }) => `${fileName}を読み込み中...`,
         binaryFile: 'バイナリファイル',
@@ -929,6 +932,9 @@ export const ja: TranslationStructure = {
         confirmDelete: ({ name }: { name: string }) => `Are you sure you want to delete "${name}"?`,
         emptyFolder: 'This folder is empty',
         browseFiles: 'Browse Files',
+        cut: '切り取り',
+        paste: '貼り付け',
+        search: 'ファイルを検索...',
     },
 
     // TODO: Translate to target language
@@ -971,6 +977,31 @@ export const ja: TranslationStructure = {
         tagFix: '@FIX',
         tagVerify: '@VERIFY',
         tagOk: '@OK',
+    },
+
+    // Plannotator
+    plannotator: {
+        reviewPlan: 'プランレビュー',
+        copyPlan: 'プランをコピー',
+        copySummary: 'サマリーをコピー',
+        redline: '取り消し線',
+        select: '選択',
+        panel: 'パネル',
+        redlineMode: '取り消し線モード',
+        selectionMode: '選択モード',
+        addComment: 'コメントを追加',
+        comment: 'コメント',
+        globalComment: 'グローバルコメント',
+        delete: '削除',
+        insert: '挿入',
+        replace: '置換',
+        global: 'グローバル',
+        enterComment: 'コメントを入力...',
+        yourFeedback: 'フィードバック...',
+        on: '対象',
+        sendFeedback: 'フィードバックを送信',
+        approve: '承認',
+        noChanges: '変更は検出されませんでした。',
     },
 
 } as const;

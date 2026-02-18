@@ -62,6 +62,7 @@ export const zhHans: TranslationStructure = {
         retry: '重试',
         delete: '删除',
         optional: '可选的',
+        share: '分享',
     },
 
     profile: {
@@ -544,6 +545,8 @@ export const zhHans: TranslationStructure = {
         projectRoot: '项目根目录',
         stagedChanges: ({ count }: { count: number }) => `已暂存的更改 (${count})`,
         unstagedChanges: ({ count }: { count: number }) => `未暂存的更改 (${count})`,
+        browse: '浏览',
+        changes: '变更',
         // File viewer strings
         loadingFile: ({ fileName }: { fileName: string }) => `正在加载 ${fileName}...`,
         binaryFile: '二进制文件',
@@ -928,6 +931,9 @@ export const zhHans: TranslationStructure = {
         confirmDelete: ({ name }: { name: string }) => `Are you sure you want to delete "${name}"?`,
         emptyFolder: 'This folder is empty',
         browseFiles: 'Browse Files',
+        cut: '剪切',
+        paste: '粘贴',
+        search: '搜索文件...',
     },
 
     // TODO: Translate to target language
@@ -970,6 +976,31 @@ export const zhHans: TranslationStructure = {
         tagFix: '@FIX',
         tagVerify: '@VERIFY',
         tagOk: '@OK',
+    },
+
+    // Plannotator
+    plannotator: {
+        reviewPlan: '审查计划',
+        copyPlan: '复制计划',
+        copySummary: '复制摘要',
+        redline: '删除线',
+        select: '选择',
+        panel: '面板',
+        redlineMode: '删除线模式',
+        selectionMode: '选择模式',
+        addComment: '添加评论',
+        comment: '评论',
+        globalComment: '全局评论',
+        delete: '删除',
+        insert: '插入',
+        replace: '替换',
+        global: '全局',
+        enterComment: '输入您的评论...',
+        yourFeedback: '您的反馈...',
+        on: '关于',
+        sendFeedback: '发送反馈',
+        approve: '批准',
+        noChanges: '未检测到更改。',
     },
 
 } as const;

@@ -60,6 +60,7 @@ export const es: TranslationStructure = {
         retry: 'Reintentar',
         delete: 'Eliminar',
         optional: 'opcional',
+        share: 'Compartir',
     },
 
     profile: {
@@ -542,6 +543,8 @@ export const es: TranslationStructure = {
         projectRoot: 'Raíz del proyecto',
         stagedChanges: ({ count }: { count: number }) => `Cambios preparados (${count})`,
         unstagedChanges: ({ count }: { count: number }) => `Cambios sin preparar (${count})`,
+        browse: 'Explorar',
+        changes: 'Cambios',
         // File viewer strings
         loadingFile: ({ fileName }: { fileName: string }) => `Cargando ${fileName}...`,
         binaryFile: 'Archivo binario',
@@ -928,6 +931,9 @@ export const es: TranslationStructure = {
         confirmDelete: ({ name }: { name: string }) => `Are you sure you want to delete "${name}"?`,
         emptyFolder: 'This folder is empty',
         browseFiles: 'Browse Files',
+        cut: 'Cortar',
+        paste: 'Pegar',
+        search: 'Buscar archivos...',
     },
 
     // TODO: Translate to target language
@@ -970,6 +976,31 @@ export const es: TranslationStructure = {
         tagFix: '@FIX',
         tagVerify: '@VERIFY',
         tagOk: '@OK',
+    },
+
+    // Plannotator
+    plannotator: {
+        reviewPlan: 'Revisar Plan',
+        copyPlan: 'Copiar plan',
+        copySummary: 'Copiar Resumen',
+        redline: 'Redline',
+        select: 'Seleccionar',
+        panel: 'Panel',
+        redlineMode: 'Modo Redline',
+        selectionMode: 'Modo Selección',
+        addComment: 'Agregar Comentario',
+        comment: 'Comentario',
+        globalComment: 'Comentario Global',
+        delete: 'Eliminar',
+        insert: 'Insertar',
+        replace: 'Reemplazar',
+        global: 'Global',
+        enterComment: 'Escribe tu comentario...',
+        yourFeedback: 'Tu opinión...',
+        on: 'Sobre',
+        sendFeedback: 'Enviar Comentarios',
+        approve: 'Aprobar',
+        noChanges: 'No se detectaron cambios.',
     },
 
 } as const;
