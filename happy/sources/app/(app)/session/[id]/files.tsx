@@ -16,21 +16,36 @@ import { useUnistyles, StyleSheet } from 'react-native-unistyles';
 import { layout } from '@/components/layout';
 import { FileIcon } from '@/components/FileIcon';
 
+type FilesTab = 'browse' | 'changes';
+
 export default function FilesScreen() {
     const route = useRoute();
     const router = useRouter();
     const sessionId = (route.params! as any).id as string;
-    
+
     const [gitStatusFiles, setGitStatusFiles] = React.useState<GitStatusFiles | null>(null);
     const [isLoading, setIsLoading] = React.useState(true);
     const [searchQuery, setSearchQuery] = React.useState('');
     const [searchResults, setSearchResults] = React.useState<FileItem[]>([]);
     const [isSearching, setIsSearching] = React.useState(false);
+    const [activeTab, setActiveTab] = React.useState<FilesTab>('browse');
     // Use project git status first, fallback to session git status for backward compatibility
     const projectGitStatus = useSessionProjectGitStatus(sessionId);
     const sessionGitStatus = useSessionGitStatus(sessionId);
     const gitStatus = projectGitStatus || sessionGitStatus;
     const { theme } = useUnistyles();
+
+    // Determine if there are git changes
+    const hasChanges = gitStatusFiles
+        ? (gitStatusFiles.totalStaged > 0 || gitStatusFiles.totalUnstaged > 0)
+        : false;
+
+    // Auto-select tab based on git status
+    React.useEffect(() => {
+        if (!isLoading && gitStatusFiles) {
+            setActiveTab(hasChanges ? 'changes' : 'browse');
+        }
+    }, [isLoading, gitStatusFiles, hasChanges]);
     
     // Load git status files
     const loadGitStatusFiles = React.useCallback(async () => {
@@ -62,7 +77,7 @@ export default function FilesScreen() {
     React.useEffect(() => {
         const loadFiles = async () => {
             if (!sessionId) return;
-            
+
             try {
                 setIsSearching(true);
                 const results = await searchFiles(sessionId, searchQuery, { limit: 100 });
@@ -75,21 +90,19 @@ export default function FilesScreen() {
             }
         };
 
-        // Load files when searching or when repo is clean
-        const shouldShowAllFiles = searchQuery || 
-            (gitStatusFiles?.totalStaged === 0 && gitStatusFiles?.totalUnstaged === 0);
-        
-        if (shouldShowAllFiles && !isLoading) {
+        // Load files in browse mode or when searching
+        const shouldLoadFiles = searchQuery || activeTab === 'browse';
+
+        if (shouldLoadFiles && !isLoading) {
             loadFiles();
-        } else if (!searchQuery) {
+        } else if (!searchQuery && activeTab !== 'browse') {
             setSearchResults([]);
             setIsSearching(false);
         }
-    }, [searchQuery, gitStatusFiles, sessionId, isLoading]);
+    }, [searchQuery, activeTab, sessionId, isLoading]);
 
     const handleFilePress = React.useCallback((file: GitFileStatus | FileItem) => {
-        // Navigate to file viewer with the file path (base64 encoded for special characters)
-        const encodedPath = btoa(file.fullPath);
+        const encodedPath = encodeURIComponent(file.fullPath);
         router.push(`/session/${sessionId}/file?path=${encodedPath}`);
     }, [router, sessionId]);
 
@@ -188,13 +201,76 @@ export default function FilesScreen() {
                 </View>
             </View>
             
-            {/* Browse Files button */}
-            {!isLoading && (
+            {/* Tab switcher + Browse Files button */}
+            {!isLoading && gitStatusFiles && (
                 <View style={{
                     paddingHorizontal: 16,
                     paddingTop: 12,
-                    paddingBottom: 4,
+                    paddingBottom: 8,
                 }}>
+                    {/* Tabs */}
+                    <View style={{
+                        flexDirection: 'row',
+                        backgroundColor: theme.colors.input.background,
+                        borderRadius: 10,
+                        padding: 3,
+                        marginBottom: 8,
+                    }}>
+                        <Pressable
+                            onPress={() => setActiveTab('browse')}
+                            style={{
+                                flex: 1,
+                                paddingVertical: 8,
+                                borderRadius: 8,
+                                alignItems: 'center',
+                                backgroundColor: activeTab === 'browse' ? theme.colors.surface : 'transparent',
+                            }}
+                        >
+                            <Text style={{
+                                fontSize: 14,
+                                fontWeight: activeTab === 'browse' ? '600' : '400',
+                                color: activeTab === 'browse' ? theme.colors.text : theme.colors.textSecondary,
+                                ...Typography.default(),
+                            }}>
+                                {t('files.browse')}
+                            </Text>
+                        </Pressable>
+                        <Pressable
+                            onPress={() => setActiveTab('changes')}
+                            style={{
+                                flex: 1,
+                                paddingVertical: 8,
+                                borderRadius: 8,
+                                alignItems: 'center',
+                                backgroundColor: activeTab === 'changes' ? theme.colors.surface : 'transparent',
+                            }}
+                        >
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                <Text style={{
+                                    fontSize: 14,
+                                    fontWeight: activeTab === 'changes' ? '600' : '400',
+                                    color: activeTab === 'changes' ? theme.colors.text : theme.colors.textSecondary,
+                                    ...Typography.default(),
+                                }}>
+                                    {t('files.changes')}
+                                </Text>
+                                {hasChanges && (
+                                    <View style={{
+                                        backgroundColor: theme.colors.warning,
+                                        borderRadius: 8,
+                                        paddingHorizontal: 5,
+                                        paddingVertical: 1,
+                                    }}>
+                                        <Text style={{ fontSize: 10, color: '#fff', fontWeight: '600' }}>
+                                            {gitStatusFiles.totalStaged + gitStatusFiles.totalUnstaged}
+                                        </Text>
+                                    </View>
+                                )}
+                            </View>
+                        </Pressable>
+                    </View>
+
+                    {/* Full File Manager button */}
                     <Pressable
                         onPress={() => router.push(`/session/${sessionId}/file-manager`)}
                         style={{
@@ -220,8 +296,8 @@ export default function FilesScreen() {
                 </View>
             )}
 
-            {/* Header with branch info */}
-            {!isLoading && gitStatusFiles && (
+            {/* Header with branch info (only in changes tab) */}
+            {!isLoading && gitStatusFiles && activeTab === 'changes' && (
                 <View style={{
                     padding: 16,
                     borderBottomWidth: Platform.select({ ios: 0.33, default: 1 }),
@@ -291,7 +367,7 @@ export default function FilesScreen() {
                             {t('files.notUnderGit')}
                         </Text>
                     </View>
-                ) : searchQuery || (gitStatusFiles.totalStaged === 0 && gitStatusFiles.totalUnstaged === 0) ? (
+                ) : searchQuery || activeTab === 'browse' ? (
                     // Show search results or all files when clean repo
                     isSearching ? (
                         <View style={{ 

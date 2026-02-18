@@ -13,21 +13,29 @@ import {
 interface FileActionsProps {
     visible: boolean;
     node: TreeNode | null;
+    clipboard: { path: string; mode: 'copy' | 'cut' } | null;
     onClose: () => void;
     onCreateFile: (parentPath: string) => void;
     onCreateFolder: (parentPath: string) => void;
     onRename: (node: TreeNode) => void;
     onDelete: (node: TreeNode) => void;
+    onCopy: (node: TreeNode) => void;
+    onCut: (node: TreeNode) => void;
+    onPaste: (destinationPath: string) => void;
 }
 
 export const FileActions = React.memo<FileActionsProps>(({
     visible,
     node,
+    clipboard,
     onClose,
     onCreateFile,
     onCreateFolder,
     onRename,
     onDelete,
+    onCopy,
+    onCut,
+    onPaste,
 }) => {
     const { theme } = useUnistyles();
 
@@ -92,6 +100,40 @@ export const FileActions = React.memo<FileActionsProps>(({
                                 showChevron={false}
                             />
                         </>
+                    )}
+
+                    {/* Copy / Cut */}
+                    <Item
+                        title={t('common.copy')}
+                        icon={<Ionicons name="copy-outline" size={24} color={theme.colors.textLink} />}
+                        onPress={() => {
+                            onClose();
+                            onCopy(node);
+                        }}
+                        showChevron={false}
+                    />
+                    <Item
+                        title={t('fileManager.cut')}
+                        icon={<Ionicons name="cut-outline" size={24} color={theme.colors.textLink} />}
+                        onPress={() => {
+                            onClose();
+                            onCut(node);
+                        }}
+                        showChevron={false}
+                    />
+
+                    {/* Paste (only when clipboard has content and target is a directory) */}
+                    {isDir && clipboard && (
+                        <Item
+                            title={t('fileManager.paste')}
+                            subtitle={clipboard.path.split('/').pop()}
+                            icon={<Ionicons name="clipboard-outline" size={24} color={theme.colors.textLink} />}
+                            onPress={() => {
+                                onClose();
+                                onPaste(parentPath);
+                            }}
+                            showChevron={false}
+                        />
                     )}
 
                     <Item

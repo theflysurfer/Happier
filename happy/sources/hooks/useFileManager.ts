@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { MMKV } from 'react-native-mmkv';
 import {
     sessionGetDirectoryTree,
     sessionBash,
@@ -6,6 +7,41 @@ import {
     type TreeNode,
 } from '@/sync/ops';
 import { storage } from '@/sync/storage';
+
+const mmkv = new MMKV();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Get cached file tree from MMKV, returns null if expired or missing.
+ */
+function getCachedTree(sessionId: string, path: string): TreeNode | null {
+    const key = `filetree:${sessionId}:${path}`;
+    const raw = mmkv.getString(key);
+    if (!raw) return null;
+    try {
+        const cached = JSON.parse(raw) as { tree: TreeNode; timestamp: number };
+        if (Date.now() - cached.timestamp > CACHE_TTL_MS) return null;
+        return cached.tree;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Store file tree in MMKV cache.
+ */
+function setCachedTree(sessionId: string, path: string, tree: TreeNode) {
+    const key = `filetree:${sessionId}:${path}`;
+    mmkv.set(key, JSON.stringify({ tree, timestamp: Date.now() }));
+}
+
+/**
+ * Invalidate file tree cache for a session/path.
+ */
+function invalidateCache(sessionId: string, path: string) {
+    const key = `filetree:${sessionId}:${path}`;
+    mmkv.delete(key);
+}
 
 interface FileManagerState {
     currentPath: string;
@@ -19,19 +55,24 @@ export function useFileManager(sessionId: string) {
     const session = storage.getState().sessions[sessionId];
     const rootPath = session?.metadata?.path || '/';
 
-    const [state, setState] = React.useState<FileManagerState>({
-        currentPath: rootPath,
-        tree: null,
-        expandedPaths: new Set<string>(),
-        isLoading: true,
-        error: null,
+    const [state, setState] = React.useState<FileManagerState>(() => {
+        // Try loading from cache for instant display
+        const cached = getCachedTree(sessionId, rootPath);
+        return {
+            currentPath: rootPath,
+            tree: cached,
+            expandedPaths: new Set<string>(),
+            isLoading: !cached,
+            error: null,
+        };
     });
 
     const loadTree = React.useCallback(async (path: string) => {
-        setState(prev => ({ ...prev, isLoading: true, error: null }));
+        setState(prev => ({ ...prev, isLoading: prev.tree === null, error: null }));
         try {
             const response = await sessionGetDirectoryTree(sessionId, path, 3);
             if (response.success && response.tree) {
+                setCachedTree(sessionId, path, response.tree);
                 setState(prev => ({
                     ...prev,
                     tree: response.tree!,
@@ -88,6 +129,7 @@ export function useFileManager(sessionId: string) {
         if (!response.success) {
             throw new Error(response.error || 'Failed to create file');
         }
+        invalidateCache(sessionId, state.currentPath);
         await loadTree(state.currentPath);
         return fullPath;
     }, [sessionId, loadTree, state.currentPath]);
@@ -106,6 +148,7 @@ export function useFileManager(sessionId: string) {
         if (!response.success) {
             throw new Error(response.stderr || 'Failed to create folder');
         }
+        invalidateCache(sessionId, state.currentPath);
         await loadTree(state.currentPath);
     }, [sessionId, loadTree, state.currentPath]);
 
@@ -122,6 +165,7 @@ export function useFileManager(sessionId: string) {
         if (!response.success) {
             throw new Error(response.stderr || 'Failed to rename');
         }
+        invalidateCache(sessionId, state.currentPath);
         await loadTree(state.currentPath);
     }, [sessionId, loadTree, state.currentPath]);
 
@@ -137,6 +181,7 @@ export function useFileManager(sessionId: string) {
         if (!response.success) {
             throw new Error(response.stderr || 'Failed to delete');
         }
+        invalidateCache(sessionId, state.currentPath);
         await loadTree(state.currentPath);
     }, [sessionId, loadTree, state.currentPath]);
 

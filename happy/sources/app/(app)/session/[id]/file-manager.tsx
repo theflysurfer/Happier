@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { View, ActivityIndicator, RefreshControl, Platform } from 'react-native';
+import { View, ActivityIndicator, RefreshControl, Platform, TextInput } from 'react-native';
 import { useRoute, useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { Text } from '@/components/StyledText';
@@ -13,8 +13,10 @@ import { useFileManager } from '@/hooks/useFileManager';
 import { Breadcrumb } from '@/components/filemanager/Breadcrumb';
 import { TreeView } from '@/components/filemanager/TreeView';
 import { FileActions } from '@/components/filemanager/FileActions';
-import { Octicons } from '@expo/vector-icons';
+import { Ionicons, Octicons } from '@expo/vector-icons';
 import type { TreeNode } from '@/sync/ops';
+import { sessionBash } from '@/sync/ops';
+import { storage } from '@/sync/storage';
 
 export default React.memo(function FileManagerScreen() {
     const route = useRoute();
@@ -26,6 +28,8 @@ export default React.memo(function FileManagerScreen() {
 
     const [selectedNode, setSelectedNode] = React.useState<TreeNode | null>(null);
     const [actionsVisible, setActionsVisible] = React.useState(false);
+    const [clipboard, setClipboard] = React.useState<{ path: string; mode: 'copy' | 'cut' } | null>(null);
+    const [searchQuery, setSearchQuery] = React.useState('');
 
     // Refresh on focus
     useFocusEffect(
@@ -35,7 +39,7 @@ export default React.memo(function FileManagerScreen() {
     );
 
     const handleFilePress = React.useCallback((path: string) => {
-        const encodedPath = btoa(path);
+        const encodedPath = encodeURIComponent(path);
         router.push(`/session/${sessionId}/file?path=${encodedPath}`);
     }, [router, sessionId]);
 
@@ -53,7 +57,7 @@ export default React.memo(function FileManagerScreen() {
         if (!value || !value.trim()) return;
         try {
             const fullPath = await fm.createFile(parentPath, value.trim());
-            const encodedPath = btoa(fullPath);
+            const encodedPath = encodeURIComponent(fullPath);
             router.push(`/session/${sessionId}/file?path=${encodedPath}`);
         } catch (error) {
             Modal.alert(t('common.error'), error instanceof Error ? error.message : 'Failed');
@@ -109,6 +113,53 @@ export default React.memo(function FileManagerScreen() {
         );
     }, [fm]);
 
+    const handleCopy = React.useCallback((node: TreeNode) => {
+        setClipboard({ path: node.path, mode: 'copy' });
+    }, []);
+
+    const handleCut = React.useCallback((node: TreeNode) => {
+        setClipboard({ path: node.path, mode: 'cut' });
+    }, []);
+
+    const handlePaste = React.useCallback(async (destinationPath: string) => {
+        if (!clipboard) return;
+        const session = storage.getState().sessions[sessionId];
+        const sessionPath = session?.metadata?.path;
+        if (!sessionPath) return;
+        try {
+            const srcName = clipboard.path.split('/').pop() || '';
+            const destFullPath = `${destinationPath}/${srcName}`;
+            const cmd = clipboard.mode === 'cut'
+                ? `mv "${clipboard.path}" "${destFullPath}"`
+                : `cp -r "${clipboard.path}" "${destFullPath}"`;
+            await sessionBash(sessionId, { command: cmd, cwd: sessionPath, timeout: 10000 });
+            if (clipboard.mode === 'cut') setClipboard(null);
+            fm.refresh();
+        } catch (error) {
+            Modal.alert(t('common.error'), error instanceof Error ? error.message : 'Failed to paste');
+        }
+    }, [clipboard, sessionId, fm]);
+
+    // Filter tree by search query
+    const filteredTree = React.useMemo(() => {
+        if (!searchQuery.trim() || !fm.tree) return fm.tree;
+        const query = searchQuery.toLowerCase();
+        function filterNode(node: TreeNode): TreeNode | null {
+            if (node.type === 'file') {
+                return node.name.toLowerCase().includes(query) ? node : null;
+            }
+            const filteredChildren = (node.children || [])
+                .map(filterNode)
+                .filter(Boolean) as TreeNode[];
+            if (filteredChildren.length > 0 || node.name.toLowerCase().includes(query)) {
+                return { ...node, children: filteredChildren };
+            }
+            return null;
+        }
+        const result = filterNode(fm.tree);
+        return result || fm.tree;
+    }, [fm.tree, searchQuery]);
+
     if (fm.isLoading && !fm.tree) {
         return (
             <View style={[styles.center, { backgroundColor: theme.colors.surface }]}>
@@ -140,6 +191,28 @@ export default React.memo(function FileManagerScreen() {
                 onNavigate={fm.navigateTo}
             />
 
+            {/* Search bar */}
+            <View style={[styles.searchContainer, { borderBottomColor: theme.colors.divider }]}>
+                <Ionicons name="search" size={18} color={theme.colors.textSecondary} />
+                <TextInput
+                    style={[styles.searchInput, { color: theme.colors.text }]}
+                    placeholder={t('fileManager.search')}
+                    placeholderTextColor={theme.colors.textSecondary}
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                />
+                {searchQuery.length > 0 && (
+                    <Ionicons
+                        name="close-circle"
+                        size={18}
+                        color={theme.colors.textSecondary}
+                        onPress={() => setSearchQuery('')}
+                    />
+                )}
+            </View>
+
             {/* Tree view */}
             <ItemList
                 style={{ flex: 1 }}
@@ -151,14 +224,15 @@ export default React.memo(function FileManagerScreen() {
                     />
                 }
             >
-                {fm.tree ? (
+                {filteredTree ? (
                     <View style={[styles.treeContainer, { backgroundColor: theme.colors.surface }]}>
                         <TreeView
-                            tree={fm.tree}
+                            tree={filteredTree}
                             expandedPaths={fm.expandedPaths}
                             onToggleExpand={fm.toggleExpand}
                             onFilePress={handleFilePress}
                             onLongPress={handleLongPress}
+                            sessionId={sessionId}
                         />
                     </View>
                 ) : null}
@@ -168,11 +242,15 @@ export default React.memo(function FileManagerScreen() {
             <FileActions
                 visible={actionsVisible}
                 node={selectedNode}
+                clipboard={clipboard}
                 onClose={() => setActionsVisible(false)}
                 onCreateFile={handleCreateFile}
                 onCreateFolder={handleCreateFolder}
                 onRename={handleRename}
                 onDelete={handleDelete}
+                onCopy={handleCopy}
+                onCut={handleCut}
+                onPaste={handlePaste}
             />
         </View>
     );
@@ -201,6 +279,20 @@ const styles = StyleSheet.create((theme) => ({
         fontSize: 16,
         marginTop: 16,
         textAlign: 'center',
+    },
+    searchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        gap: 8,
+        borderBottomWidth: Platform.select({ ios: 0.33, default: 1 }),
+    },
+    searchInput: {
+        flex: 1,
+        ...Typography.default(),
+        fontSize: 16,
+        paddingVertical: 4,
     },
     treeContainer: {
         marginHorizontal: Platform.select({ ios: 16, default: 12 }),

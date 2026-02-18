@@ -15,11 +15,42 @@ import { t } from '@/text';
 import { FileIcon } from '@/components/FileIcon';
 import { useFileEditor } from '@/hooks/useFileEditor';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import Animated, { useSharedValue, useAnimatedStyle } from 'react-native-reanimated';
+import WebView from 'react-native-webview';
+import { File as ExpoFile, Paths } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 interface FileContent {
     content: string;
     encoding: 'utf8' | 'base64';
     isBinary: boolean;
+}
+
+// Image extensions that can be displayed inline
+const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'];
+
+// Get the MIME type for an image extension
+function getImageMime(ext: string): string {
+    if (ext === 'jpg') return 'image/jpeg';
+    return `image/${ext}`;
+}
+
+// Check if a file is a viewable image
+function isImageFile(path: string): boolean {
+    const ext = path.split('.').pop()?.toLowerCase() || '';
+    return IMAGE_EXTENSIONS.includes(ext);
+}
+
+// Check if a file is a PDF
+function isPdfFile(path: string): boolean {
+    return path.toLowerCase().endsWith('.pdf');
+}
+
+// Check if a file is an SVG (text-based, not binary)
+function isSvgFile(path: string): boolean {
+    return path.toLowerCase().endsWith('.svg');
 }
 
 // Diff display component
@@ -81,17 +112,25 @@ export default function FileScreen() {
     const encodedPath = searchParams.path as string;
     let filePath = '';
 
-    // Decode base64 path with error handling
+    // Decode path - supports both encodeURIComponent (new) and base64/atob (legacy)
     try {
-        filePath = encodedPath ? atob(encodedPath) : '';
-    } catch (error) {
-        console.error('Failed to decode file path:', error);
-        filePath = encodedPath || '';
+        if (encodedPath) {
+            // Try decodeURIComponent first (new encoding)
+            filePath = decodeURIComponent(encodedPath);
+        }
+    } catch {
+        try {
+            // Fallback to base64/atob (legacy encoding)
+            filePath = atob(encodedPath);
+        } catch {
+            console.error('Failed to decode file path');
+            filePath = encodedPath || '';
+        }
     }
 
     const [fileContent, setFileContent] = React.useState<FileContent | null>(null);
     const [diffContent, setDiffContent] = React.useState<string | null>(null);
-    const [displayMode, setDisplayMode] = React.useState<'file' | 'diff'>('diff');
+    const [displayMode, setDisplayMode] = React.useState<'file' | 'diff'>('file');
     const [isLoading, setIsLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
 
@@ -232,10 +271,11 @@ export default function FileScreen() {
     }, []);
 
     // Check if file is likely binary based on extension
+    // SVG is text-based, not binary. Images and PDFs are binary but viewable.
     const isBinaryFile = React.useCallback((path: string): boolean => {
         const ext = path.split('.').pop()?.toLowerCase();
         const binaryExtensions = [
-            'png', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'ico',
+            'png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp',
             'mp4', 'avi', 'mov', 'wmv', 'flv', 'webm',
             'mp3', 'wav', 'flac', 'aac', 'ogg',
             'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
@@ -260,16 +300,32 @@ export default function FileScreen() {
                 const session = storage.getState().sessions[sessionId!];
                 const sessionPath = session?.metadata?.path;
 
-                // Check if file is likely binary before trying to read
+                // For binary files, still read content for viewable types (images, PDF)
                 if (isBinaryFile(filePath)) {
-                    if (!isCancelled) {
-                        setFileContent({
-                            content: '',
-                            encoding: 'base64',
-                            isBinary: true
-                        });
-                        setIsLoading(false);
+                    const isViewable = isImageFile(filePath) || isPdfFile(filePath);
+                    if (isViewable) {
+                        try {
+                            const response = await sessionReadFile(sessionId, filePath);
+                            if (!isCancelled && response.success && response.content) {
+                                setFileContent({
+                                    content: response.content,
+                                    encoding: 'base64',
+                                    isBinary: true
+                                });
+                            } else if (!isCancelled) {
+                                setFileContent({ content: '', encoding: 'base64', isBinary: true });
+                            }
+                        } catch {
+                            if (!isCancelled) {
+                                setFileContent({ content: '', encoding: 'base64', isBinary: true });
+                            }
+                        }
+                    } else {
+                        if (!isCancelled) {
+                            setFileContent({ content: '', encoding: 'base64', isBinary: true });
+                        }
                     }
+                    if (!isCancelled) setIsLoading(false);
                     return;
                 }
 
@@ -412,6 +468,28 @@ export default function FileScreen() {
     }
 
     if (fileContent?.isBinary) {
+        const ext = filePath.split('.').pop()?.toLowerCase() || '';
+
+        // Image viewer with pinch-to-zoom
+        if (isImageFile(filePath) && fileContent.content) {
+            return <ImageViewer
+                base64Content={fileContent.content}
+                ext={ext}
+                fileName={fileName}
+                sessionId={sessionId!}
+            />;
+        }
+
+        // PDF viewer
+        if (isPdfFile(filePath) && fileContent.content) {
+            return <PdfViewer
+                base64Content={fileContent.content}
+                fileName={fileName}
+                sessionId={sessionId!}
+            />;
+        }
+
+        // Unsupported binary file
         return (
             <View style={{
                 flex: 1,
@@ -584,11 +662,189 @@ export default function FileScreen() {
     );
 }
 
+// Share a base64 file via the system share sheet
+async function shareBase64File(base64Content: string, fileName: string, mimeType: string) {
+    try {
+        const tempFile = new ExpoFile(Paths.cache, fileName);
+        // Decode base64 to bytes and write to cache
+        const binaryString = atob(base64Content);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        tempFile.write(bytes);
+        await Sharing.shareAsync(tempFile.uri, { mimeType });
+    } catch (error) {
+        console.error('Share failed:', error);
+        Modal.alert(t('common.error'), 'Failed to share file');
+    }
+}
+
+// Image viewer with pinch-to-zoom
+const ImageViewer = React.memo(({ base64Content, ext, fileName, sessionId }: {
+    base64Content: string;
+    ext: string;
+    fileName: string;
+    sessionId: string;
+}) => {
+    const { theme } = useUnistyles();
+    const mime = getImageMime(ext);
+    const scale = useSharedValue(1);
+    const savedScale = useSharedValue(1);
+    const translateX = useSharedValue(0);
+    const translateY = useSharedValue(0);
+    const savedTranslateX = useSharedValue(0);
+    const savedTranslateY = useSharedValue(0);
+
+    const pinchGesture = Gesture.Pinch()
+        .onUpdate((e) => {
+            scale.value = savedScale.value * e.scale;
+        })
+        .onEnd(() => {
+            savedScale.value = scale.value;
+            if (scale.value < 1) {
+                scale.value = 1;
+                savedScale.value = 1;
+                translateX.value = 0;
+                translateY.value = 0;
+                savedTranslateX.value = 0;
+                savedTranslateY.value = 0;
+            }
+        });
+
+    const panGesture = Gesture.Pan()
+        .onUpdate((e) => {
+            if (savedScale.value > 1) {
+                translateX.value = savedTranslateX.value + e.translationX;
+                translateY.value = savedTranslateY.value + e.translationY;
+            }
+        })
+        .onEnd(() => {
+            savedTranslateX.value = translateX.value;
+            savedTranslateY.value = translateY.value;
+        });
+
+    const doubleTap = Gesture.Tap()
+        .numberOfTaps(2)
+        .onStart(() => {
+            if (savedScale.value > 1) {
+                scale.value = 1;
+                savedScale.value = 1;
+                translateX.value = 0;
+                translateY.value = 0;
+                savedTranslateX.value = 0;
+                savedTranslateY.value = 0;
+            } else {
+                scale.value = 2.5;
+                savedScale.value = 2.5;
+            }
+        });
+
+    const composed = Gesture.Simultaneous(pinchGesture, panGesture, doubleTap);
+
+    const animatedStyle = useAnimatedStyle(() => ({
+        transform: [
+            { translateX: translateX.value },
+            { translateY: translateY.value },
+            { scale: scale.value },
+        ],
+    }));
+
+    return (
+        <View style={{ flex: 1, backgroundColor: theme.colors.surface }}>
+            <GestureDetector gesture={composed}>
+                <Animated.View style={[{ flex: 1, justifyContent: 'center', alignItems: 'center' }, animatedStyle]}>
+                    <Image
+                        source={{ uri: `data:${mime};base64,${base64Content}` }}
+                        style={{ width: '100%', height: '100%' }}
+                        contentFit="contain"
+                    />
+                </Animated.View>
+            </GestureDetector>
+            <View style={styles.shareBar}>
+                <Text style={[styles.shareFileName, { color: theme.colors.textSecondary }]}>{fileName}</Text>
+                <TouchableOpacity
+                    onPress={() => shareBase64File(base64Content, fileName, mime)}
+                    style={styles.shareButton}
+                >
+                    <Ionicons name="share-outline" size={22} color={theme.colors.textLink} />
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
+});
+
+// PDF viewer using WebView
+const PdfViewer = React.memo(({ base64Content, fileName, sessionId }: {
+    base64Content: string;
+    fileName: string;
+    sessionId: string;
+}) => {
+    const { theme } = useUnistyles();
+
+    // WebView renders PDFs natively on Android via Google Docs viewer or built-in
+    // On iOS, WKWebView can render PDFs from data URIs
+    const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                body { margin: 0; padding: 0; background: ${theme.colors.surface}; }
+                embed, iframe { width: 100%; height: 100vh; border: none; }
+            </style>
+        </head>
+        <body>
+            <embed src="data:application/pdf;base64,${base64Content}" type="application/pdf" width="100%" height="100%">
+        </body>
+        </html>
+    `;
+
+    return (
+        <View style={{ flex: 1, backgroundColor: theme.colors.surface }}>
+            <WebView
+                source={{ html }}
+                style={{ flex: 1 }}
+                originWhitelist={['*']}
+                javaScriptEnabled={true}
+                scalesPageToFit={true}
+            />
+            <View style={styles.shareBar}>
+                <Text style={[styles.shareFileName, { color: theme.colors.textSecondary }]}>{fileName}</Text>
+                <TouchableOpacity
+                    onPress={() => shareBase64File(base64Content, fileName, 'application/pdf')}
+                    style={styles.shareButton}
+                >
+                    <Ionicons name="share-outline" size={22} color={theme.colors.textLink} />
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
+});
+
 const styles = StyleSheet.create((theme) => ({
     container: {
         flex: 1,
         maxWidth: layout.maxWidth,
         alignSelf: 'center',
         width: '100%',
-    }
+    },
+    shareBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.divider,
+        backgroundColor: theme.colors.surfaceHigh,
+    },
+    shareFileName: {
+        flex: 1,
+        fontSize: 14,
+        ...Typography.mono(),
+    },
+    shareButton: {
+        padding: 8,
+        marginLeft: 8,
+    },
 }));

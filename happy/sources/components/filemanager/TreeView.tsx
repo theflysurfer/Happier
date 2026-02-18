@@ -6,6 +6,7 @@ import { FileIcon } from '@/components/FileIcon';
 import { Typography } from '@/constants/Typography';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import type { TreeNode } from '@/sync/ops';
+import { hasAnnotations } from '@/plannotator/storage/annotationStorage';
 
 interface TreeViewProps {
     node: TreeNode;
@@ -14,6 +15,7 @@ interface TreeViewProps {
     onToggleExpand: (path: string) => void;
     onFilePress: (path: string) => void;
     onLongPress: (node: TreeNode) => void;
+    sessionId?: string;
 }
 
 const INDENT_PER_LEVEL = 20;
@@ -25,11 +27,14 @@ const TreeNodeRow = React.memo<TreeViewProps>(({
     onToggleExpand,
     onFilePress,
     onLongPress,
+    sessionId,
 }) => {
     const { theme } = useUnistyles();
     const isDir = node.type === 'directory';
     const isExpanded = expandedPaths.has(node.path);
     const hasChildren = isDir && node.children && node.children.length > 0;
+    const isMarkdown = !isDir && (node.name.endsWith('.md') || node.name.endsWith('.mdx'));
+    const hasAnnotationBadge = isMarkdown && sessionId ? hasAnnotations(sessionId, node.path) : false;
 
     const handlePress = React.useCallback(() => {
         if (isDir) {
@@ -107,6 +112,11 @@ const TreeNodeRow = React.memo<TreeViewProps>(({
                     {node.name}
                 </Text>
 
+                {/* Annotation badge for .md files */}
+                {hasAnnotationBadge && (
+                    <View style={styles.annotationBadge} />
+                )}
+
                 {/* Chevron for files */}
                 {!isDir && (
                     <Ionicons
@@ -139,6 +149,7 @@ const TreeNodeRow = React.memo<TreeViewProps>(({
                     onToggleExpand={onToggleExpand}
                     onFilePress={onFilePress}
                     onLongPress={onLongPress}
+                    sessionId={sessionId}
                 />
             ))}
         </>
@@ -151,6 +162,7 @@ interface TreeViewRootProps {
     onToggleExpand: (path: string) => void;
     onFilePress: (path: string) => void;
     onLongPress: (node: TreeNode) => void;
+    sessionId?: string;
 }
 
 export const TreeView = React.memo<TreeViewRootProps>(({
@@ -159,6 +171,7 @@ export const TreeView = React.memo<TreeViewRootProps>(({
     onToggleExpand,
     onFilePress,
     onLongPress,
+    sessionId,
 }) => {
     // Sort root children: directories first, then files
     const sortedChildren = React.useMemo(() => {
@@ -181,6 +194,7 @@ export const TreeView = React.memo<TreeViewRootProps>(({
                     onToggleExpand={onToggleExpand}
                     onFilePress={onFilePress}
                     onLongPress={onLongPress}
+                    sessionId={sessionId}
                 />
             ))}
         </View>
@@ -215,6 +229,13 @@ const styles = StyleSheet.create((theme) => ({
     },
     dirName: {
         fontWeight: '500',
+    },
+    annotationBadge: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#8B5CF6',
+        marginLeft: 6,
     },
     divider: {
         height: Platform.select({ ios: 0.33, default: 0 }),
