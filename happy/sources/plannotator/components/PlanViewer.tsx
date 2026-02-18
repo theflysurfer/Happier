@@ -11,12 +11,14 @@ import { BlockRenderer } from './BlockRenderer';
 import { AnnotationToolbar } from './AnnotationToolbar';
 import { useTextSelection } from '../hooks/useTextSelection';
 import { createAnnotation } from '../hooks/useAnnotations';
+import { t } from '@/text';
 
 interface PlanViewerProps {
   blocks: Block[];
   annotations: Annotation[];
   mode: EditorMode;
   onAddAnnotation: (annotation: Annotation) => void;
+  onRemoveAnnotation?: (id: string) => void;
   onSelectAnnotation?: (id: string) => void;
   onCopy?: (content: string) => void;
 }
@@ -26,6 +28,7 @@ export const PlanViewer: React.FC<PlanViewerProps> = ({
   annotations,
   mode,
   onAddAnnotation,
+  onRemoveAnnotation,
   onSelectAnnotation,
   onCopy,
 }) => {
@@ -114,8 +117,8 @@ export const PlanViewer: React.FC<PlanViewerProps> = ({
           a => a.blockId === block.id && a.type === AnnotationType.DELETION
         );
         if (existingDeletion) {
-          // Remove existing deletion - need to expose removeAnnotation
-          console.log('[PlanViewer] Block already marked for deletion, would remove');
+          // Remove existing deletion
+          onRemoveAnnotation?.(existingDeletion.id);
         } else {
           // Add deletion annotation
           const newAnnotation = createAnnotation({
@@ -203,7 +206,7 @@ export const PlanViewer: React.FC<PlanViewerProps> = ({
                   color: theme.colors.textSecondary,
                 }}
               >
-                Copy plan
+                {t('plannotator.copyPlan')}
               </Text>
             </Pressable>
           )}
@@ -276,7 +279,7 @@ export const PlanViewer: React.FC<PlanViewerProps> = ({
             color: mode === 'redline' ? '#dc2626' : '#d97706',
           }}
         >
-          {mode === 'redline' ? '🔴 Redline Mode' : '✏️ Selection Mode'}
+          {mode === 'redline' ? t('plannotator.redlineMode') : t('plannotator.selectionMode')}
         </Text>
       </View>
 
@@ -319,7 +322,7 @@ export const PlanViewer: React.FC<PlanViewerProps> = ({
                 marginBottom: 8,
               }}
             >
-              Add Comment
+              {t('plannotator.addComment')}
             </Text>
 
             {/* Show block content preview */}
@@ -333,7 +336,7 @@ export const PlanViewer: React.FC<PlanViewerProps> = ({
                 }}
                 numberOfLines={2}
               >
-                On: "{commentBlock.content.slice(0, 100)}
+                {t('plannotator.on')}: "{commentBlock.content.slice(0, 100)}
                 {commentBlock.content.length > 100 ? '...' : ''}"
               </Text>
             )}
@@ -350,7 +353,7 @@ export const PlanViewer: React.FC<PlanViewerProps> = ({
                 backgroundColor: theme.colors.surfaceHighest,
                 textAlignVertical: 'top',
               }}
-              placeholder="Enter your comment..."
+              placeholder={t('plannotator.enterComment')}
               placeholderTextColor={theme.colors.textSecondary}
               value={commentText}
               onChangeText={setCommentText}
@@ -375,7 +378,7 @@ export const PlanViewer: React.FC<PlanViewerProps> = ({
                 }}
                 onPress={() => setCommentModalVisible(false)}
               >
-                <Text style={{ color: theme.colors.textSecondary }}>Cancel</Text>
+                <Text style={{ color: theme.colors.textSecondary }}>{t('common.cancel')}</Text>
               </Pressable>
 
               <Pressable
@@ -390,7 +393,7 @@ export const PlanViewer: React.FC<PlanViewerProps> = ({
                 disabled={!commentText.trim()}
               >
                 <Text style={{ color: commentText.trim() ? '#fff' : theme.colors.textSecondary, fontWeight: '500' }}>
-                  Add Comment
+                  {t('plannotator.addComment')}
                 </Text>
               </Pressable>
             </View>

@@ -61,17 +61,17 @@ export const AnnotationPanel: React.FC<AnnotationPanelProps> = ({
   const getTypeLabel = (type: AnnotationType) => {
     switch (type) {
       case AnnotationType.DELETION:
-        return 'Delete';
+        return t('plannotator.delete');
       case AnnotationType.INSERTION:
-        return 'Insert';
+        return t('plannotator.insert');
       case AnnotationType.REPLACEMENT:
-        return 'Replace';
+        return t('plannotator.replace');
       case AnnotationType.COMMENT:
-        return 'Comment';
+        return t('plannotator.comment');
       case AnnotationType.GLOBAL_COMMENT:
-        return 'Global';
+        return t('plannotator.global');
       default:
-        return 'Unknown';
+        return '';
     }
   };
 

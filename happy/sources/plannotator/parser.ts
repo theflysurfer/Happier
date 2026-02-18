@@ -4,6 +4,7 @@
  */
 
 import { Block, Annotation, AnnotationType } from './types';
+import { t } from '@/text';
 
 /**
  * Parsed YAML frontmatter as key-value pairs.
@@ -236,7 +237,7 @@ export const parseMarkdownToBlocks = (markdown: string): Block[] => {
  */
 export const exportDiff = (blocks: Block[], annotations: Annotation[]): string => {
   if (annotations.length === 0) {
-    return 'No changes detected.';
+    return t('plannotator.noChanges');
   }
 
   const sortedAnns = [...annotations].sort((a, b) => {

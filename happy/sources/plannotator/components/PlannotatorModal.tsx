@@ -7,6 +7,7 @@ import {
   Modal,
   View,
   Text,
+  TextInput,
   Pressable,
   SafeAreaView,
   ActivityIndicator,
@@ -16,12 +17,13 @@ import {
 import { useUnistyles } from 'react-native-unistyles';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import { parseMarkdownToBlocks, exportDiff } from '../parser';
-import { EditorMode, PlannotatorMode, ReviewTag } from '../types';
+import { EditorMode, PlannotatorMode, AnnotationType, ReviewTag } from '../types';
 import { PlanViewer } from './PlanViewer';
 import { AnnotationPanel } from './AnnotationPanel';
 import { ReviewTagPicker } from './ReviewTagPicker';
-import { useAnnotations } from '../hooks/useAnnotations';
+import { useAnnotations, createAnnotation } from '../hooks/useAnnotations';
 import { usePlanReview } from '../hooks/usePlanReview';
 import { t } from '@/text';
 import type { Annotation } from '../types';
@@ -68,6 +70,9 @@ export const PlannotatorModal: React.FC<PlannotatorModalProps> = ({
   const [showTagPicker, setShowTagPicker] = useState(false);
   const [pendingTags, setPendingTags] = useState<ReviewTag[]>([]);
   const [pendingMacro, setPendingMacro] = useState(false);
+  const [globalCommentVisible, setGlobalCommentVisible] = useState(false);
+  const [globalCommentText, setGlobalCommentText] = useState('');
+  const [copyFeedback, setCopyFeedback] = useState(false);
 
   // Parse markdown into blocks
   const blocks = useMemo(() => {
@@ -137,10 +142,33 @@ export const PlannotatorModal: React.FC<PlannotatorModalProps> = ({
   }, [selectedAnnotationId, annotations]);
 
   // Copy to clipboard
-  const handleCopy = useCallback((content: string) => {
-    // TODO: Use Clipboard.setStringAsync(content)
-    console.log('Copy:', content.slice(0, 100) + '...');
+  const handleCopy = useCallback(async (content: string) => {
+    await Clipboard.setStringAsync(content);
   }, []);
+
+  // Copy annotation summary to clipboard
+  const handleCopySummary = useCallback(async () => {
+    const summary = exportDiff(blocks, annotations);
+    await Clipboard.setStringAsync(summary);
+    setCopyFeedback(true);
+    setTimeout(() => setCopyFeedback(false), 2000);
+  }, [blocks, annotations]);
+
+  // Submit global comment
+  const handleSubmitGlobalComment = useCallback(() => {
+    if (!globalCommentText.trim()) return;
+    const annotation = createAnnotation({
+      blockId: 'global',
+      startOffset: 0,
+      endOffset: 0,
+      type: AnnotationType.GLOBAL_COMMENT,
+      text: globalCommentText.trim(),
+      originalText: '',
+    });
+    addAnnotation(annotation);
+    setGlobalCommentVisible(false);
+    setGlobalCommentText('');
+  }, [globalCommentText, addAnnotation]);
 
   // Toggle mode
   const toggleMode = useCallback(() => {
@@ -184,7 +212,7 @@ export const PlannotatorModal: React.FC<PlannotatorModalProps> = ({
                 marginLeft: 12,
               }}
             >
-              {isPlanMode ? 'Review Plan' : t('annotations.title')}
+              {isPlanMode ? t('plannotator.reviewPlan') : t('annotations.title')}
             </Text>
           </View>
 
@@ -232,7 +260,7 @@ export const PlannotatorModal: React.FC<PlannotatorModalProps> = ({
                   fontWeight: editorMode === 'redline' ? '500' : '400',
                 }}
               >
-                {editorMode === 'redline' ? 'Redline' : 'Select'}
+                {editorMode === 'redline' ? t('plannotator.redline') : t('plannotator.select')}
               </Text>
             </Pressable>
 
@@ -265,7 +293,7 @@ export const PlannotatorModal: React.FC<PlannotatorModalProps> = ({
                   marginLeft: 4,
                 }}
               >
-                Panel
+                {t('plannotator.panel')}
               </Text>
               {annotationCount > 0 && (
                 <View
@@ -295,6 +323,7 @@ export const PlannotatorModal: React.FC<PlannotatorModalProps> = ({
               annotations={annotations}
               mode={editorMode}
               onAddAnnotation={addAnnotation}
+              onRemoveAnnotation={removeAnnotation}
               onSelectAnnotation={setSelectedAnnotationId}
               onCopy={handleCopy}
             />
@@ -343,6 +372,49 @@ export const PlannotatorModal: React.FC<PlannotatorModalProps> = ({
             gap: 12,
           }}
         >
+            {/* Global Comment button */}
+          <Pressable
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: 12,
+              paddingVertical: 10,
+              borderRadius: 8,
+              backgroundColor: theme.dark ? 'rgba(139, 92, 246, 0.3)' : '#ede9fe',
+            }}
+            onPress={() => { setGlobalCommentText(''); setGlobalCommentVisible(true); }}
+          >
+            <Ionicons name="earth-outline" size={16} color="#8b5cf6" style={{ marginRight: 6 }} />
+            <Text style={{ fontSize: 14, fontWeight: '500', color: '#8b5cf6' }}>
+              {t('plannotator.globalComment')}
+            </Text>
+          </Pressable>
+
+          {/* Copy Summary button */}
+          {annotationCount > 0 && (
+            <Pressable
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+                borderRadius: 8,
+                backgroundColor: theme.colors.surfaceHighest,
+              }}
+              onPress={handleCopySummary}
+            >
+              <Ionicons
+                name={copyFeedback ? 'checkmark-circle' : 'clipboard-outline'}
+                size={16}
+                color={copyFeedback ? theme.colors.success : theme.colors.textSecondary}
+                style={{ marginRight: 6 }}
+              />
+              <Text style={{ fontSize: 14, fontWeight: '500', color: copyFeedback ? theme.colors.success : theme.colors.textSecondary }}>
+                {copyFeedback ? t('common.copied') : t('plannotator.copySummary')}
+              </Text>
+            </Pressable>
+          )}
+
           {isPlanMode ? (
             <>
               {/* Send Feedback button */}
@@ -372,7 +444,7 @@ export const PlannotatorModal: React.FC<PlannotatorModalProps> = ({
                   />
                 )}
                 <Text style={{ fontSize: 14, fontWeight: '500', color: '#d97706' }}>
-                  Send Feedback ({annotationCount})
+                  {t('plannotator.sendFeedback')} ({annotationCount})
                 </Text>
               </Pressable>
 
@@ -394,7 +466,7 @@ export const PlannotatorModal: React.FC<PlannotatorModalProps> = ({
                   <ActivityIndicator size="small" color="#fff" style={{ marginRight: 8 }} />
                 )}
                 <Text style={{ fontSize: 14, fontWeight: '500', color: '#fff' }}>
-                  Approve
+                  {t('plannotator.approve')}
                 </Text>
               </Pressable>
             </>
@@ -429,6 +501,110 @@ export const PlannotatorModal: React.FC<PlannotatorModalProps> = ({
         onToggleMacro={setPendingMacro}
         onClose={handleApplyTags}
       />
+
+      {/* Global Comment modal */}
+      <Modal
+        visible={globalCommentVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setGlobalCommentVisible(false)}
+      >
+        <Pressable
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+          onPress={() => setGlobalCommentVisible(false)}
+        >
+          <Pressable
+            style={{
+              width: '90%',
+              maxWidth: 400,
+              backgroundColor: theme.colors.surface,
+              borderRadius: 12,
+              padding: 16,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 8,
+            }}
+            onPress={e => e.stopPropagation()}
+          >
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: '600',
+                color: theme.colors.text,
+                marginBottom: 12,
+              }}
+            >
+              {t('plannotator.globalComment')}
+            </Text>
+
+            <TextInput
+              style={{
+                borderWidth: 1,
+                borderColor: theme.colors.divider,
+                borderRadius: 8,
+                padding: 12,
+                minHeight: 80,
+                fontSize: 14,
+                color: theme.colors.text,
+                backgroundColor: theme.colors.surfaceHighest,
+                textAlignVertical: 'top',
+              }}
+              placeholder={t('plannotator.enterComment')}
+              placeholderTextColor={theme.colors.textSecondary}
+              value={globalCommentText}
+              onChangeText={setGlobalCommentText}
+              multiline
+              autoFocus
+            />
+
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'flex-end',
+                marginTop: 16,
+                gap: 12,
+              }}
+            >
+              <Pressable
+                style={{
+                  paddingHorizontal: 16,
+                  paddingVertical: 8,
+                  borderRadius: 6,
+                  backgroundColor: theme.colors.surfaceHighest,
+                }}
+                onPress={() => setGlobalCommentVisible(false)}
+              >
+                <Text style={{ color: theme.colors.textSecondary }}>
+                  {t('common.cancel')}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={{
+                  paddingHorizontal: 16,
+                  paddingVertical: 8,
+                  borderRadius: 6,
+                  backgroundColor: globalCommentText.trim() ? '#8b5cf6' : theme.colors.surfaceHighest,
+                  opacity: globalCommentText.trim() ? 1 : 0.5,
+                }}
+                onPress={handleSubmitGlobalComment}
+                disabled={!globalCommentText.trim()}
+              >
+                <Text style={{ color: globalCommentText.trim() ? '#fff' : theme.colors.textSecondary, fontWeight: '500' }}>
+                  {t('plannotator.addComment')}
+                </Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </Modal>
   );
 };

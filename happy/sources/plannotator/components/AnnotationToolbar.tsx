@@ -7,6 +7,7 @@ import { View, Text, Pressable, TextInput, Modal } from 'react-native';
 import { useUnistyles } from 'react-native-unistyles';
 import { Ionicons } from '@expo/vector-icons';
 import { AnnotationType, ToolbarPosition } from '../types';
+import { t } from '@/text';
 
 interface AnnotationToolbarProps {
   visible: boolean;
@@ -89,7 +90,7 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
         >
           <Ionicons name="trash-outline" size={16} color={theme.colors.deleteAction} />
           <Text style={[buttonTextStyle, { color: theme.colors.deleteAction }]}>
-            Delete
+            {t('common.delete')}
           </Text>
         </Pressable>
 
@@ -98,7 +99,7 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
         {/* Comment */}
         <Pressable style={buttonStyle} onPress={handleComment}>
           <Ionicons name="chatbubble-outline" size={16} color="#f59e0b" />
-          <Text style={[buttonTextStyle, { color: '#f59e0b' }]}>Comment</Text>
+          <Text style={[buttonTextStyle, { color: '#f59e0b' }]}>{t('plannotator.comment')}</Text>
         </Pressable>
 
         <View style={{ width: 1, backgroundColor: theme.colors.divider }} />
@@ -109,7 +110,7 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
             <Pressable style={buttonStyle} onPress={onCopy}>
               <Ionicons name="copy-outline" size={16} color={theme.colors.textSecondary} />
               <Text style={[buttonTextStyle, { color: theme.colors.textSecondary }]}>
-                Copy
+                {t('common.copy')}
               </Text>
             </Pressable>
             <View style={{ width: 1, backgroundColor: theme.colors.divider }} />
@@ -152,7 +153,7 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
                 marginBottom: 8,
               }}
             >
-              Add Comment
+              {t('plannotator.addComment')}
             </Text>
 
             <Text
@@ -178,7 +179,7 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
                 minHeight: 80,
                 textAlignVertical: 'top',
               }}
-              placeholder="Your feedback..."
+              placeholder={t('plannotator.yourFeedback')}
               placeholderTextColor={theme.colors.textSecondary}
               value={commentText}
               onChangeText={setCommentText}
@@ -203,7 +204,7 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
                   backgroundColor: theme.colors.surfaceHighest,
                 }}
               >
-                <Text style={{ color: theme.colors.text }}>Cancel</Text>
+                <Text style={{ color: theme.colors.text }}>{t('common.cancel')}</Text>
               </Pressable>
 
               <Pressable
@@ -215,7 +216,7 @@ export const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({
                   backgroundColor: '#f59e0b',
                 }}
               >
-                <Text style={{ color: '#fff', fontWeight: '600' }}>Add Comment</Text>
+                <Text style={{ color: '#fff', fontWeight: '600' }}>{t('plannotator.addComment')}</Text>
               </Pressable>
             </View>
           </Pressable>
