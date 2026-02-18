@@ -618,31 +618,36 @@ yarn ota:production
 #### Pending
 - Auto-update "play store style" via EAS Update (push new features to installed APKs without Play Store)
 
-### Testing Prerequisites
+### Deploying Code to Device
 
-To test new code on-device (emulator or real phone), you need ONE of:
+**Preferred method: Local native build (no EAS login needed)**
 
-1. **EAS Login** (for OTA updates or cloud builds):
-   ```bash
-   npx eas-cli login   # Login with Expo account (bulkacorp)
-   yarn ota             # Push JS update to preview channel
-   ```
+A junction link exists at `C:\Dev\happy` pointing to the project. Use it for native builds (the real path has spaces/parentheses which break Gradle/CMake):
 
-2. **Development Client APK** (for Metro live reloading):
-   ```bash
-   npx eas-cli login
-   eas build --profile development --platform android  # Cloud build
-   # Then install the APK on device and connect to Metro
-   ```
+```bash
+cd /c/Dev/happy && ANDROID_HOME=/c/Dev/android APP_ENV=development npx expo run:android
+```
 
-3. **Native Build** (requires path without spaces):
-   ```bash
-   # Current path has spaces/parens - need junction or move project
-   cmd /c "mklink /J C:\Dev\happy C:\path\to\happy"
-   cd C:\Dev\happy && APP_ENV=development npx expo run:android
-   ```
+This builds the APK locally with Gradle, installs it on the connected device via ADB, and starts Metro for live reloading. Takes ~5-10 min for a full build, subsequent builds are faster (incremental).
 
-**Current blocker**: EAS login required. Run `npx eas-cli login` to authenticate.
+**Prerequisites:**
+- Device connected via USB: `adb devices` should show the device
+- Junction exists: `ls /c/Dev/happy` (if not: `cmd /c "mklink /J C:\Dev\happy <full-project-path>"`)
+- Android SDK at `C:\Dev\android` (ANDROID_HOME)
+- Java 17+ installed
+
+**Alternative: OTA updates (requires EAS login)**
+
+For JS-only changes (no native module changes), OTA is faster (~30s):
+```bash
+npx eas-cli login   # One-time login with Expo account (bulkacorp)
+yarn ota             # Push JS update to preview channel
+```
+
+**Important notes:**
+- The installed APK (`com.slopus.happy.dev` v1.6.2) is a **preview build without dev-client**. Metro hot-reload will NOT work with it. You must rebuild with `expo run:android` to get a dev-client APK.
+- After rebuilding with `expo run:android`, the new APK WILL support Metro. Subsequent code changes will be instant via hot-reload without rebuilding.
+- `yarn ota` uses `eas update --branch preview` which requires EAS authentication.
 
 ### TypeScript Note
 - `sources/sync/typesRaw.spec.ts` has ~112 pre-existing type errors (union type narrowing issues). These are NOT from our changes and do not affect the app.

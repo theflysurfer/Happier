@@ -1,6 +1,31 @@
 {
   "entries": [
     {
+      "version": 6,
+      "date": "2026-02-18",
+      "summary": "This release brings a major overhaul to the file management and annotation experience, making Happy the ideal companion for reviewing and annotating LLM-generated content.",
+      "changes": [
+        "Fixed Plannotator clipboard: copy plan button now actually copies content to clipboard using expo-clipboard",
+        "Fixed Plannotator redline toggle: tapping a block in redline mode now properly toggles deletion on/off",
+        "Added annotation export: new \"Copy Summary\" button generates and copies a diff-style summary of all annotations",
+        "Added global comment support in Plannotator for document-level feedback",
+        "Internationalized all Plannotator UI strings across 9 languages (en, ru, pl, es, ca, it, ja, pt, zh-Hans)",
+        "Redesigned files screen with Browse/Changes tabs - now defaults to file tree when repo is clean",
+        "Added file tree caching with MMKV for instant display on subsequent opens",
+        "Fixed file viewer defaulting to diff mode when no diff is available - now shows file content directly",
+        "Added clickable file paths in chat messages - tap any file path mentioned by the LLM to open it",
+        "Added \"Open\" button on tool calls that create or modify files",
+        "Added image viewer with pinch-to-zoom support for PNG, JPG, GIF, BMP, and WebP files",
+        "Added PDF viewer with embedded WebView rendering",
+        "Improved SVG handling: SVG files now display as text with syntax highlighting instead of \"Cannot display binary file\"",
+        "Added share/export button for images and PDFs via system share sheet",
+        "Added copy/cut/paste operations in the file manager for moving files between folders",
+        "Added purple annotation badges on markdown files in the file tree that have Plannotator annotations",
+        "Added search bar in file manager for filtering files by name"
+      ],
+      "rawMarkdown": "## Version 6 - 2026-02-18\n\r\n\r\nThis release brings a major overhaul to the file management and annotation experience, making Happy the ideal companion for reviewing and annotating LLM-generated content.\r\n\r\n- Fixed Plannotator clipboard: copy plan button now actually copies content to clipboard using expo-clipboard\r\n- Fixed Plannotator redline toggle: tapping a block in redline mode now properly toggles deletion on/off\r\n- Added annotation export: new \"Copy Summary\" button generates and copies a diff-style summary of all annotations\r\n- Added global comment support in Plannotator for document-level feedback\r\n- Internationalized all Plannotator UI strings across 9 languages (en, ru, pl, es, ca, it, ja, pt, zh-Hans)\r\n- Redesigned files screen with Browse/Changes tabs - now defaults to file tree when repo is clean\r\n- Added file tree caching with MMKV for instant display on subsequent opens\r\n- Fixed file viewer defaulting to diff mode when no diff is available - now shows file content directly\r\n- Added clickable file paths in chat messages - tap any file path mentioned by the LLM to open it\r\n- Added \"Open\" button on tool calls that create or modify files\r\n- Added image viewer with pinch-to-zoom support for PNG, JPG, GIF, BMP, and WebP files\r\n- Added PDF viewer with embedded WebView rendering\r\n- Improved SVG handling: SVG files now display as text with syntax highlighting instead of \"Cannot display binary file\"\r\n- Added share/export button for images and PDFs via system share sheet\r\n- Added copy/cut/paste operations in the file manager for moving files between folders\r\n- Added purple annotation badges on markdown files in the file tree that have Plannotator annotations\r\n- Added search bar in file manager for filtering files by name"
+    },
+    {
       "version": 5,
       "date": "2025-12-22",
       "summary": "This release expands AI agent support and refines the voice experience, while improving markdown rendering for a better chat experience.",
@@ -10,7 +35,7 @@
         "Elevenlabs ... is epxensive. Voice conversations will soon require a subscription after 3 free trials - we'll soon allow connecting your own ElevenLabs agent if you want to manage your own spendings.",
         "Improved markdown table rendering in chat - no more ASCII pipes `|--|`, actual formatted tables (layout still needs work, but much better!)"
       ],
-      "rawMarkdown": "## Version 5 - 2025-12-22\n\n\nThis release expands AI agent support and refines the voice experience, while improving markdown rendering for a better chat experience.\n\n- We are working on adding Gemini support using ACP and hopefully fixing codex stability issues using the same approach soon! Stay tuned.\n- Removed model configurations from agents. We were not able to keep up with the models so for now we are removing the configuration from the mobile app. You can still configure it through your CLIs, happy will simply use defaults.\n- Elevenlabs ... is epxensive. Voice conversations will soon require a subscription after 3 free trials - we'll soon allow connecting your own ElevenLabs agent if you want to manage your own spendings.\n- Improved markdown table rendering in chat - no more ASCII pipes `|--|`, actual formatted tables (layout still needs work, but much better!)"
+      "rawMarkdown": "## Version 5 - 2025-12-22\n\r\n\r\nThis release expands AI agent support and refines the voice experience, while improving markdown rendering for a better chat experience.\r\n\r\n- We are working on adding Gemini support using ACP and hopefully fixing codex stability issues using the same approach soon! Stay tuned.\r\n- Removed model configurations from agents. We were not able to keep up with the models so for now we are removing the configuration from the mobile app. You can still configure it through your CLIs, happy will simply use defaults.\r\n- Elevenlabs ... is epxensive. Voice conversations will soon require a subscription after 3 free trials - we'll soon allow connecting your own ElevenLabs agent if you want to manage your own spendings.\r\n- Improved markdown table rendering in chat - no more ASCII pipes `|--|`, actual formatted tables (layout still needs work, but much better!)"
     },
     {
       "version": 4,
@@ -22,7 +47,7 @@
         "Added one-click session launch from mobile devices, automatically connecting to your development machine.",
         "Added ability to connect anthropic and gpt accounts to account"
       ],
-      "rawMarkdown": "## Version 4 - 2025-09-12\n\n\nThis release revolutionizes remote development with Codex integration and Daemon Mode, enabling instant AI assistance from anywhere. Start coding sessions with a single tap while maintaining complete control over your development environment.\n\n- Introduced Codex support for advanced AI-powered code completion and generation capabilities.\n- Implemented Daemon Mode as the new default, enabling instant remote session initiation without manual CLI startup.\n- Added one-click session launch from mobile devices, automatically connecting to your development machine.\n- Added ability to connect anthropic and gpt accounts to account"
+      "rawMarkdown": "## Version 4 - 2025-09-12\n\r\n\r\nThis release revolutionizes remote development with Codex integration and Daemon Mode, enabling instant AI assistance from anywhere. Start coding sessions with a single tap while maintaining complete control over your development environment.\r\n\r\n- Introduced Codex support for advanced AI-powered code completion and generation capabilities.\r\n- Implemented Daemon Mode as the new default, enabling instant remote session initiation without manual CLI startup.\r\n- Added one-click session launch from mobile devices, automatically connecting to your development machine.\r\n- Added ability to connect anthropic and gpt accounts to account"
     },
     {
       "version": 3,
@@ -36,7 +61,7 @@
         "Added one-tap GitHub disconnect functionality with confirmation protection",
         "Improved account management with clear connection status indicators"
       ],
-      "rawMarkdown": "## Version 3 - 2025-08-29\n\n\nThis update introduces seamless GitHub integration, bringing your developer identity directly into Happy while maintaining our commitment to privacy and security.\n\n- Added GitHub account connection through secure OAuth authentication flow\n- Integrated profile synchronization displaying your GitHub avatar, name, and bio\n- Implemented encrypted token storage on our backend for additional security protection\n- Enhanced settings interface with personalized profile display when connected\n- Added one-tap GitHub disconnect functionality with confirmation protection\n- Improved account management with clear connection status indicators"
+      "rawMarkdown": "## Version 3 - 2025-08-29\n\r\n\r\nThis update introduces seamless GitHub integration, bringing your developer identity directly into Happy while maintaining our commitment to privacy and security.\r\n\r\n- Added GitHub account connection through secure OAuth authentication flow\r\n- Integrated profile synchronization displaying your GitHub avatar, name, and bio\r\n- Implemented encrypted token storage on our backend for additional security protection\r\n- Enhanced settings interface with personalized profile display when connected\r\n- Added one-tap GitHub disconnect functionality with confirmation protection\r\n- Improved account management with clear connection status indicators"
     },
     {
       "version": 2,
@@ -49,7 +74,7 @@
         "Added visual indicators for modified files directly in the session list",
         "Implemented preferred language selection for voice assistant supporting 15+ languages"
       ],
-      "rawMarkdown": "## Version 2 - 2025-06-26\n\n\nThis update focuses on seamless device connectivity, visual refinements, and intelligent voice interactions for an enhanced user experience.\n\n- Added QR code authentication for instant and secure device linking across platforms\n- Introduced comprehensive dark theme with automatic system preference detection\n- Improved voice assistant performance with faster response times and reduced latency\n- Added visual indicators for modified files directly in the session list\n- Implemented preferred language selection for voice assistant supporting 15+ languages"
+      "rawMarkdown": "## Version 2 - 2025-06-26\n\r\n\r\nThis update focuses on seamless device connectivity, visual refinements, and intelligent voice interactions for an enhanced user experience.\r\n\r\n- Added QR code authentication for instant and secure device linking across platforms\r\n- Introduced comprehensive dark theme with automatic system preference detection\r\n- Improved voice assistant performance with faster response times and reduced latency\r\n- Added visual indicators for modified files directly in the session list\r\n- Implemented preferred language selection for voice assistant supporting 15+ languages"
     },
     {
       "version": 1,
@@ -62,8 +87,8 @@
         "Built seamless real-time synchronization across all your devices",
         "Established native support for iOS, Android, and responsive web interfaces"
       ],
-      "rawMarkdown": "## Version 1 - 2025-05-12\n\n\nWelcome to Happy - your secure, encrypted mobile companion for Claude Code. This inaugural release establishes the foundation for private, powerful AI interactions on the go.\n\n- Implemented end-to-end encrypted session management ensuring complete privacy\n- Integrated intelligent voice assistant with natural conversation capabilities\n- Added experimental file manager with syntax highlighting and tree navigation\n- Built seamless real-time synchronization across all your devices\n- Established native support for iOS, Android, and responsive web interfaces"
+      "rawMarkdown": "## Version 1 - 2025-05-12\n\r\n\r\nWelcome to Happy - your secure, encrypted mobile companion for Claude Code. This inaugural release establishes the foundation for private, powerful AI interactions on the go.\r\n\r\n- Implemented end-to-end encrypted session management ensuring complete privacy\r\n- Integrated intelligent voice assistant with natural conversation capabilities\r\n- Added experimental file manager with syntax highlighting and tree navigation\r\n- Built seamless real-time synchronization across all your devices\r\n- Established native support for iOS, Android, and responsive web interfaces"
     }
   ],
-  "latestVersion": 5
+  "latestVersion": 6
 }

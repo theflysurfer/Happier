@@ -1,5 +1,27 @@
 # Changelog
 
+## Version 6 - 2026-02-18
+
+This release brings a major overhaul to the file management and annotation experience, making Happy the ideal companion for reviewing and annotating LLM-generated content.
+
+- Fixed Plannotator clipboard: copy plan button now actually copies content to clipboard using expo-clipboard
+- Fixed Plannotator redline toggle: tapping a block in redline mode now properly toggles deletion on/off
+- Added annotation export: new "Copy Summary" button generates and copies a diff-style summary of all annotations
+- Added global comment support in Plannotator for document-level feedback
+- Internationalized all Plannotator UI strings across 9 languages (en, ru, pl, es, ca, it, ja, pt, zh-Hans)
+- Redesigned files screen with Browse/Changes tabs - now defaults to file tree when repo is clean
+- Added file tree caching with MMKV for instant display on subsequent opens
+- Fixed file viewer defaulting to diff mode when no diff is available - now shows file content directly
+- Added clickable file paths in chat messages - tap any file path mentioned by the LLM to open it
+- Added "Open" button on tool calls that create or modify files
+- Added image viewer with pinch-to-zoom support for PNG, JPG, GIF, BMP, and WebP files
+- Added PDF viewer with embedded WebView rendering
+- Improved SVG handling: SVG files now display as text with syntax highlighting instead of "Cannot display binary file"
+- Added share/export button for images and PDFs via system share sheet
+- Added copy/cut/paste operations in the file manager for moving files between folders
+- Added purple annotation badges on markdown files in the file tree that have Plannotator annotations
+- Added search bar in file manager for filtering files by name
+
 ## Version 5 - 2025-12-22
 
 This release expands AI agent support and refines the voice experience, while improving markdown rendering for a better chat experience.
