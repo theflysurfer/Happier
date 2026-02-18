@@ -16,6 +16,22 @@ import { parseToolUseError } from '@/utils/toolErrorParser';
 import { formatMCPTitle } from './views/MCPToolView';
 import { t } from '@/text';
 
+// Helper to extract file path from a tool call for the "Open" button
+function getToolFilePath(tool: ToolCall): string | null {
+    const input = tool.input;
+    if (!input) return null;
+    if (typeof input.file_path === 'string') return input.file_path;
+    if (typeof input.notebook_path === 'string') return input.notebook_path;
+    if (input.locations && Array.isArray(input.locations) && input.locations[0]?.path) {
+        return input.locations[0].path;
+    }
+    if (input.parsed_cmd && Array.isArray(input.parsed_cmd) && input.parsed_cmd.length === 1) {
+        const cmd = input.parsed_cmd[0];
+        if ((cmd.type === 'read' || cmd.type === 'write') && cmd.name) return cmd.name;
+    }
+    return null;
+}
+
 interface ToolViewProps {
     metadata: Metadata | null;
     tool: ToolCall;
@@ -38,6 +54,15 @@ export const ToolView = React.memo<ToolViewProps>((props) => {
             router.push(`/session/${sessionId}/message/${messageId}`);
         }
     }, [onPress, sessionId, messageId, router]);
+
+    // Extract file path for "Open file" button
+    const toolFilePath = getToolFilePath(tool);
+    const canOpenFile = !!(toolFilePath && sessionId && tool.state === 'completed');
+    const handleOpenFile = React.useCallback(() => {
+        if (toolFilePath && sessionId) {
+            router.push(`/session/${sessionId}/file?path=${encodeURIComponent(toolFilePath)}` as any);
+        }
+    }, [toolFilePath, sessionId, router]);
 
     // Enable pressable if either onPress is provided or we have navigation params
     const isPressable = !!(onPress || (sessionId && messageId));
@@ -172,6 +197,11 @@ export const ToolView = React.memo<ToolViewProps>((props) => {
                                 <ElapsedView from={tool.createdAt} />
                             </View>
                         )}
+                        {canOpenFile && (
+                            <TouchableOpacity onPress={handleOpenFile} style={styles.openFileButton} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                                <Ionicons name="open-outline" size={16} color={theme.colors.textSecondary} />
+                            </TouchableOpacity>
+                        )}
                         {statusIcon}
                     </View>
                 </TouchableOpacity>
@@ -193,6 +223,11 @@ export const ToolView = React.memo<ToolViewProps>((props) => {
                             <View style={styles.elapsedContainer}>
                                 <ElapsedView from={tool.createdAt} />
                             </View>
+                        )}
+                        {canOpenFile && (
+                            <TouchableOpacity onPress={handleOpenFile} style={styles.openFileButton} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                                <Ionicons name="open-outline" size={16} color={theme.colors.textSecondary} />
+                            </TouchableOpacity>
                         )}
                         {statusIcon}
                     </View>
@@ -319,6 +354,10 @@ const styles = StyleSheet.create((theme) => ({
         fontSize: 13,
         color: theme.colors.textSecondary,
         marginTop: 2,
+    },
+    openFileButton: {
+        padding: 4,
+        marginLeft: 4,
     },
     content: {
         paddingHorizontal: 12,

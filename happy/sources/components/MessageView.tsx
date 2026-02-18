@@ -11,6 +11,7 @@ import { AgentEvent } from "@/sync/typesRaw";
 import { sync } from '@/sync/sync';
 import { Option } from './markdown/MarkdownView';
 import { useSetting } from "@/sync/storage";
+import { useRouter } from "expo-router";
 
 export const MessageView = (props: {
   message: Message;
@@ -90,9 +91,13 @@ function AgentTextBlock(props: {
   sessionId: string;
 }) {
   const experiments = useSetting('experiments');
+  const router = useRouter();
   const handleOptionPress = React.useCallback((option: Option) => {
     sync.sendMessage(props.sessionId, option.title);
   }, [props.sessionId]);
+  const handleFilePath = React.useCallback((path: string) => {
+    router.push(`/session/${props.sessionId}/file?path=${encodeURIComponent(path)}` as any);
+  }, [props.sessionId, router]);
 
   // Hide thinking messages unless experiments is enabled
   if (props.message.isThinking && !experiments) {
@@ -101,7 +106,7 @@ function AgentTextBlock(props: {
 
   return (
     <View style={styles.agentMessageContainer}>
-      <MarkdownView markdown={props.message.text} onOptionPress={handleOptionPress} />
+      <MarkdownView markdown={props.message.text} onOptionPress={handleOptionPress} onFilePath={handleFilePath} />
     </View>
   );
 }

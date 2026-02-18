@@ -15,14 +15,26 @@ import * as Clipboard from 'expo-clipboard';
 import { MermaidRenderer } from './MermaidRenderer';
 import { t } from '@/text';
 
+// Context for file path navigation (avoids prop threading through all block renderers)
+const FilePathContext = React.createContext<((path: string) => void) | undefined>(undefined);
+
+// Detect if a code span text looks like a file path
+function isLikelyFilePath(text: string): boolean {
+    if (text.includes('://')) return false;
+    if (text.includes(' ')) return false;
+    if (!/\.\w{1,10}$/.test(text)) return false;
+    return text.includes('/') || text.includes('\\');
+}
+
 // Option type for callback
 export type Option = {
     title: string;
 };
 
-export const MarkdownView = React.memo((props: { 
+export const MarkdownView = React.memo((props: {
     markdown: string;
     onOptionPress?: (option: Option) => void;
+    onFilePath?: (path: string) => void;
 }) => {
     const blocks = React.useMemo(() => parseMarkdown(props.markdown), [props.markdown]);
     
@@ -46,6 +58,7 @@ export const MarkdownView = React.memo((props: {
     }, [props.markdown, router]);
     const renderContent = () => {
         return (
+            <FilePathContext.Provider value={props.onFilePath}>
             <View style={{ width: '100%' }}>
                 {blocks.map((block, index) => {
                     if (block.type === 'text') {
@@ -71,6 +84,7 @@ export const MarkdownView = React.memo((props: {
                     }
                 })}
             </View>
+            </FilePathContext.Provider>
         );
     }
 
@@ -217,10 +231,13 @@ function RenderOptionsBlock(props: {
 }
 
 function RenderSpans(props: { spans: MarkdownSpan[], baseStyle?: any, selectable?: boolean }) {
+    const onFilePath = React.useContext(FilePathContext);
     return (<>
         {props.spans.map((span, index) => {
             if (span.url) {
                 return <Link key={index} href={span.url as any} target="_blank" style={[style.link, span.styles.map(s => style[s])]}>{span.text}</Link>
+            } else if (onFilePath && span.styles.includes('code') && isLikelyFilePath(span.text)) {
+                return <Text key={index} onPress={() => onFilePath(span.text)} style={[props.baseStyle, span.styles.map(s => style[s]), style.filePathLink]}>{span.text}</Text>
             } else {
                 return <Text key={index} selectable={props.selectable ?? false} style={[props.baseStyle, span.styles.map(s => style[s])]}>{span.text}</Text>
             }
@@ -310,6 +327,9 @@ const style = StyleSheet.create((theme) => ({
         ...Typography.default(),
         color: theme.colors.textLink,
         fontWeight: '400',
+    },
+    filePathLink: {
+        textDecorationLine: 'underline' as const,
     },
 
     // Headers
