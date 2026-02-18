@@ -1,4 +1,5 @@
 const { getDefaultConfig } = require("expo/metro-config");
+const path = require("path");
 
 const config = getDefaultConfig(__dirname, {
   // Enable CSS support for web
@@ -8,6 +9,12 @@ const config = getDefaultConfig(__dirname, {
 // Add support for .wasm files (required by Skia for all platforms)
 // Source: https://shopify.github.io/react-native-skia/docs/getting-started/installation/
 config.resolver.assetExts.push('wasm');
+
+// Exclude screenshots directory from Metro's file watcher to reduce memory usage
+config.resolver.blockList = [
+  ...(config.resolver.blockList || []),
+  new RegExp(path.resolve(__dirname, 'screenshots').replace(/[/\\]/g, '[/\\\\]')),
+];
 
 // Enable inlineRequires for proper Skia and Reanimated loading
 // Source: https://shopify.github.io/react-native-skia/docs/getting-started/web/
