@@ -582,6 +582,15 @@ export const it: TranslationStructure = {
         file: 'File',
         fileEmpty: 'File vuoto',
         noChanges: 'Nessuna modifica da mostrare',
+        loadingCsv: 'Caricamento tabella...',
+        loadingSqlite: 'Caricamento database...',
+        annotateCell: 'Annota cella',
+        annotationPlaceholder: 'Aggiungi un commento su questo valore...',
+        browseTitle: 'Sfoglia cartelle',
+        browseButton: 'Sfoglia sulla macchina...',
+        hideBrowser: 'Nascondi browser',
+        browsingFolder: 'Caricamento cartelle...',
+        emptyFolder: 'Nessuna cartella trovata',
     },
 
     settingsVoice: {

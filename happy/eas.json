@@ -1,13 +1,15 @@
 {
   "cli": {
     "version": ">= 14.2.0",
-    "appVersionSource": "remote"
+    "appVersionSource": "remote",
+    "requireCommit": true
   },
   "build": {
     "development": {
       "autoIncrement": true,
       "developmentClient": true,
       "distribution": "internal",
+      "credentialsSource": "local",
       "channel": "development",
       "env": {
         "APP_ENV": "development"

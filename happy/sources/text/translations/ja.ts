@@ -585,6 +585,15 @@ export const ja: TranslationStructure = {
         file: 'ファイル',
         fileEmpty: 'ファイルは空です',
         noChanges: '表示する変更はありません',
+        loadingCsv: 'テーブルを読み込み中...',
+        loadingSqlite: 'データベースを読み込み中...',
+        annotateCell: 'セルに注釈',
+        annotationPlaceholder: 'この値についてコメントを追加...',
+        browseTitle: 'フォルダを参照',
+        browseButton: 'マシン上を参照...',
+        hideBrowser: 'ブラウザを非表示',
+        browsingFolder: 'フォルダを読み込み中...',
+        emptyFolder: 'フォルダが見つかりません',
     },
 
     settingsVoice: {

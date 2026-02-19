@@ -552,6 +552,15 @@ export const en = {
         file: 'File',
         fileEmpty: 'File is empty',
         noChanges: 'No changes to display',
+        loadingCsv: 'Loading table...',
+        loadingSqlite: 'Loading database...',
+        annotateCell: 'Annotate Cell',
+        annotationPlaceholder: 'Add a comment about this value...',
+        browseTitle: 'Browse Folders',
+        browseButton: 'Browse on machine...',
+        hideBrowser: 'Hide browser',
+        browsingFolder: 'Loading folders...',
+        emptyFolder: 'No folders found',
     },
 
     settingsVoice: {

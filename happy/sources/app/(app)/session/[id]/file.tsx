@@ -21,6 +21,13 @@ import Animated, { useSharedValue, useAnimatedStyle } from 'react-native-reanima
 import WebView from 'react-native-webview';
 import { File as ExpoFile, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import { SqliteViewer } from '@/components/viewers/SqliteViewer';
+import { CsvViewer } from '@/components/viewers/CsvViewer';
+import {
+    saveTabularAnnotations,
+    loadTabularAnnotations,
+    type TabularAnnotation,
+} from '@/plannotator/storage/tabularAnnotationStorage';
 
 interface FileContent {
     content: string;
@@ -51,6 +58,18 @@ function isPdfFile(path: string): boolean {
 // Check if a file is an SVG (text-based, not binary)
 function isSvgFile(path: string): boolean {
     return path.toLowerCase().endsWith('.svg');
+}
+
+// Check if a file is a SQLite database
+function isSqliteFile(path: string): boolean {
+    const ext = path.split('.').pop()?.toLowerCase();
+    return ['db', 'sqlite', 'sqlite3'].includes(ext || '');
+}
+
+// Check if a file is a CSV/TSV spreadsheet
+function isCsvFile(path: string): boolean {
+    const ext = path.split('.').pop()?.toLowerCase();
+    return ['csv', 'tsv'].includes(ext || '');
 }
 
 // Diff display component
@@ -140,6 +159,34 @@ export default function FileScreen() {
         filePath,
         initialContent: fileContent?.content || '',
     });
+
+    // Tabular annotation handler (SQLite/CSV cell tap)
+    const handleTabularAnnotate = React.useCallback(async (data: {
+        row: number;
+        column: string;
+        value: string;
+        table?: string;
+    }) => {
+        const comment = await Modal.prompt(
+            t('files.annotateCell'),
+            `${data.column}: ${data.value}`,
+            { placeholder: t('files.annotationPlaceholder') }
+        );
+        if (!comment) return;
+
+        const existing = loadTabularAnnotations(sessionId!, filePath, data.table);
+        const annotations: TabularAnnotation[] = existing?.annotations || [];
+        annotations.push({
+            id: Date.now().toString(36) + Math.random().toString(36).substr(2),
+            row: data.row,
+            column: data.column,
+            value: data.value,
+            comment,
+            table: data.table,
+            createdAt: Date.now(),
+        });
+        saveTabularAnnotations(sessionId!, filePath, annotations, data.table);
+    }, [sessionId, filePath]);
 
     // Check if file is markdown
     const isMarkdown = filePath.endsWith('.md') || filePath.endsWith('.mdx');
@@ -302,7 +349,7 @@ export default function FileScreen() {
 
                 // For binary files, still read content for viewable types (images, PDF)
                 if (isBinaryFile(filePath)) {
-                    const isViewable = isImageFile(filePath) || isPdfFile(filePath);
+                    const isViewable = isImageFile(filePath) || isPdfFile(filePath) || isSqliteFile(filePath);
                     if (isViewable) {
                         try {
                             const response = await sessionReadFile(sessionId, filePath);
@@ -489,6 +536,16 @@ export default function FileScreen() {
             />;
         }
 
+        // SQLite viewer
+        if (isSqliteFile(filePath) && fileContent.content) {
+            return <SqliteViewer
+                base64Content={fileContent.content}
+                fileName={fileName}
+                sessionId={sessionId!}
+                onAnnotate={handleTabularAnnotate}
+            />;
+        }
+
         // Unsupported binary file
         return (
             <View style={{
@@ -524,6 +581,20 @@ export default function FileScreen() {
                 }}>
                     {fileName}
                 </Text>
+            </View>
+        );
+    }
+
+    // CSV/TSV files get the table viewer
+    if (isCsvFile(filePath) && fileContent?.content) {
+        return (
+            <View style={[styles.container, { backgroundColor: theme.colors.surface }]}>
+                <CsvViewer
+                    content={fileContent.content}
+                    fileName={fileName}
+                    sessionId={sessionId!}
+                    onAnnotate={handleTabularAnnotate}
+                />
             </View>
         );
     }

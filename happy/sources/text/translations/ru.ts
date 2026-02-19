@@ -563,6 +563,15 @@ export const ru: TranslationStructure = {
         file: 'Файл',
         fileEmpty: 'Файл пустой',
         noChanges: 'Нет изменений для отображения',
+        loadingCsv: 'Загрузка таблицы...',
+        loadingSqlite: 'Загрузка базы данных...',
+        annotateCell: 'Аннотировать ячейку',
+        annotationPlaceholder: 'Добавьте комментарий к этому значению...',
+        browseTitle: 'Обзор папок',
+        browseButton: 'Обзор на машине...',
+        hideBrowser: 'Скрыть обзор',
+        browsingFolder: 'Загрузка папок...',
+        emptyFolder: 'Папки не найдены',
     },
 
     settingsVoice: {

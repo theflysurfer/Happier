@@ -555,6 +555,15 @@ export const zhHans: TranslationStructure = {
         file: '文件',
         fileEmpty: '文件为空',
         noChanges: '没有要显示的更改',
+        loadingCsv: '加载表格中...',
+        loadingSqlite: '加载数据库中...',
+        annotateCell: '标注单元格',
+        annotationPlaceholder: '添加关于此值的注释...',
+        browseTitle: '浏览文件夹',
+        browseButton: '在机器上浏览...',
+        hideBrowser: '隐藏浏览器',
+        browsingFolder: '加载文件夹中...',
+        emptyFolder: '未找到文件夹',
     },
 
     settingsVoice: {

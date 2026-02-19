@@ -1,5 +1,17 @@
 # Changelog
 
+## Version 7 - 2026-02-18
+
+This release adds powerful data viewers and improves the new session creation experience with folder browsing.
+
+- Added SQLite database viewer: browse tables, run SQL queries, sort columns, and annotate individual cells
+- Added CSV/TSV table viewer: parse and display tabular data with sorting, filtering, row numbers, and cell annotations
+- Added tabular annotation system: tap any cell in SQLite or CSV viewers to add comments, exported as formatted markdown for LLM review
+- Added folder browser in new session creation: browse remote machine directories with an expandable tree view
+- Added configurable root folder for the folder browser (default: home directory, configurable in settings)
+- Fixed files screen for non-git repositories: file browsing now works on any project, git features hidden when unavailable
+- Fixed native Android build: documented `subst` drive approach for paths with spaces/parentheses
+
 ## Version 6 - 2026-02-18
 
 This release brings a major overhaul to the file management and annotation experience, making Happy the ideal companion for reviewing and annotating LLM-generated content.

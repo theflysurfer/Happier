@@ -11,10 +11,12 @@ const config = getDefaultConfig(__dirname, {
 config.resolver.assetExts.push('wasm');
 
 // Exclude screenshots directory from Metro's file watcher to reduce memory usage
-config.resolver.blockList = [
-  ...(config.resolver.blockList || []),
-  new RegExp(path.resolve(__dirname, 'screenshots').replace(/[/\\]/g, '[/\\\\]')),
-];
+// blockList is a RegExp in Metro, so we combine existing pattern with our new one
+const screenshotsPattern = path.resolve(__dirname, 'screenshots').replace(/[/\\]/g, '[/\\\\]');
+const existingBlockList = config.resolver.blockList?.source || '';
+config.resolver.blockList = new RegExp(
+  existingBlockList ? `${existingBlockList}|${screenshotsPattern}` : screenshotsPattern
+);
 
 // Enable inlineRequires for proper Skia and Reanimated loading
 // Source: https://shopify.github.io/react-native-skia/docs/getting-started/web/

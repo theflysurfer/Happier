@@ -294,6 +294,8 @@ export const SettingsSchema = z.object({
     // Profile management settings
     profiles: z.array(AIBackendProfileSchema).describe('User-defined profiles for AI backend and environment variables'),
     lastUsedProfile: z.string().nullable().describe('Last selected profile for new sessions'),
+    // Folder browser root path (default ~/OneDrive/Coding, used in path picker)
+    browseRootPath: z.string().nullable().describe('Root path for the folder browser in path picker (null = use home dir)'),
     // Favorite directories for quick path selection
     favoriteDirectories: z.array(z.string()).describe('User-defined favorite directories for quick access in path selection'),
     // Favorite machines for quick machine selection
@@ -360,6 +362,8 @@ export const settingsDefaults: Settings = {
     // Profile management defaults
     profiles: [],
     lastUsedProfile: null,
+    // Folder browser root (null uses home directory, resolved at runtime)
+    browseRootPath: null,
     // Default favorite directories (real common directories on Unix-like systems)
     favoriteDirectories: ['~/src', '~/Desktop', '~/Documents'],
     // Favorite machines (empty by default)

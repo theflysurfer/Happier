@@ -40,12 +40,19 @@ export default function FilesScreen() {
         ? (gitStatusFiles.totalStaged > 0 || gitStatusFiles.totalUnstaged > 0)
         : false;
 
+    // Determine if git is available
+    const hasGit = gitStatusFiles !== null;
+
     // Auto-select tab based on git status
     React.useEffect(() => {
-        if (!isLoading && gitStatusFiles) {
-            setActiveTab(hasChanges ? 'changes' : 'browse');
+        if (!isLoading) {
+            if (hasGit && hasChanges) {
+                setActiveTab('changes');
+            } else {
+                setActiveTab('browse');
+            }
         }
-    }, [isLoading, gitStatusFiles, hasChanges]);
+    }, [isLoading, hasGit, hasChanges]);
     
     // Load git status files
     const loadGitStatusFiles = React.useCallback(async () => {
@@ -202,73 +209,75 @@ export default function FilesScreen() {
             </View>
             
             {/* Tab switcher + Browse Files button */}
-            {!isLoading && gitStatusFiles && (
+            {!isLoading && (
                 <View style={{
                     paddingHorizontal: 16,
                     paddingTop: 12,
                     paddingBottom: 8,
                 }}>
-                    {/* Tabs */}
-                    <View style={{
-                        flexDirection: 'row',
-                        backgroundColor: theme.colors.input.background,
-                        borderRadius: 10,
-                        padding: 3,
-                        marginBottom: 8,
-                    }}>
-                        <Pressable
-                            onPress={() => setActiveTab('browse')}
-                            style={{
-                                flex: 1,
-                                paddingVertical: 8,
-                                borderRadius: 8,
-                                alignItems: 'center',
-                                backgroundColor: activeTab === 'browse' ? theme.colors.surface : 'transparent',
-                            }}
-                        >
-                            <Text style={{
-                                fontSize: 14,
-                                fontWeight: activeTab === 'browse' ? '600' : '400',
-                                color: activeTab === 'browse' ? theme.colors.text : theme.colors.textSecondary,
-                                ...Typography.default(),
-                            }}>
-                                {t('files.browse')}
-                            </Text>
-                        </Pressable>
-                        <Pressable
-                            onPress={() => setActiveTab('changes')}
-                            style={{
-                                flex: 1,
-                                paddingVertical: 8,
-                                borderRadius: 8,
-                                alignItems: 'center',
-                                backgroundColor: activeTab === 'changes' ? theme.colors.surface : 'transparent',
-                            }}
-                        >
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    {/* Tabs - only show if git is available */}
+                    {hasGit && (
+                        <View style={{
+                            flexDirection: 'row',
+                            backgroundColor: theme.colors.input.background,
+                            borderRadius: 10,
+                            padding: 3,
+                            marginBottom: 8,
+                        }}>
+                            <Pressable
+                                onPress={() => setActiveTab('browse')}
+                                style={{
+                                    flex: 1,
+                                    paddingVertical: 8,
+                                    borderRadius: 8,
+                                    alignItems: 'center',
+                                    backgroundColor: activeTab === 'browse' ? theme.colors.surface : 'transparent',
+                                }}
+                            >
                                 <Text style={{
                                     fontSize: 14,
-                                    fontWeight: activeTab === 'changes' ? '600' : '400',
-                                    color: activeTab === 'changes' ? theme.colors.text : theme.colors.textSecondary,
+                                    fontWeight: activeTab === 'browse' ? '600' : '400',
+                                    color: activeTab === 'browse' ? theme.colors.text : theme.colors.textSecondary,
                                     ...Typography.default(),
                                 }}>
-                                    {t('files.changes')}
+                                    {t('files.browse')}
                                 </Text>
-                                {hasChanges && (
-                                    <View style={{
-                                        backgroundColor: theme.colors.warning,
-                                        borderRadius: 8,
-                                        paddingHorizontal: 5,
-                                        paddingVertical: 1,
+                            </Pressable>
+                            <Pressable
+                                onPress={() => setActiveTab('changes')}
+                                style={{
+                                    flex: 1,
+                                    paddingVertical: 8,
+                                    borderRadius: 8,
+                                    alignItems: 'center',
+                                    backgroundColor: activeTab === 'changes' ? theme.colors.surface : 'transparent',
+                                }}
+                            >
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                    <Text style={{
+                                        fontSize: 14,
+                                        fontWeight: activeTab === 'changes' ? '600' : '400',
+                                        color: activeTab === 'changes' ? theme.colors.text : theme.colors.textSecondary,
+                                        ...Typography.default(),
                                     }}>
-                                        <Text style={{ fontSize: 10, color: '#fff', fontWeight: '600' }}>
-                                            {gitStatusFiles.totalStaged + gitStatusFiles.totalUnstaged}
-                                        </Text>
-                                    </View>
-                                )}
-                            </View>
-                        </Pressable>
-                    </View>
+                                        {t('files.changes')}
+                                    </Text>
+                                    {hasChanges && (
+                                        <View style={{
+                                            backgroundColor: theme.colors.warning,
+                                            borderRadius: 8,
+                                            paddingHorizontal: 5,
+                                            paddingVertical: 1,
+                                        }}>
+                                            <Text style={{ fontSize: 10, color: '#fff', fontWeight: '600' }}>
+                                                {gitStatusFiles!.totalStaged + gitStatusFiles!.totalUnstaged}
+                                            </Text>
+                                        </View>
+                                    )}
+                                </View>
+                            </Pressable>
+                        </View>
+                    )}
 
                     {/* Full File Manager button */}
                     <Pressable
@@ -338,34 +347,6 @@ export default function FilesScreen() {
                         paddingTop: 40
                     }}>
                         <ActivityIndicator size="small" color={theme.colors.textSecondary} />
-                    </View>
-                ) : !gitStatusFiles ? (
-                    <View style={{ 
-                        flex: 1, 
-                        justifyContent: 'center', 
-                        alignItems: 'center',
-                        paddingTop: 40,
-                        paddingHorizontal: 20
-                    }}>
-                        <Octicons name="git-branch" size={48} color={theme.colors.textSecondary} />
-                        <Text style={{
-                            fontSize: 16,
-                            color: theme.colors.textSecondary,
-                            textAlign: 'center',
-                            marginTop: 16,
-                            ...Typography.default()
-                        }}>
-                            {t('files.notRepo')}
-                        </Text>
-                        <Text style={{
-                            fontSize: 14,
-                            color: theme.colors.textSecondary,
-                            textAlign: 'center',
-                            marginTop: 8,
-                            ...Typography.default()
-                        }}>
-                            {t('files.notUnderGit')}
-                        </Text>
                     </View>
                 ) : searchQuery || activeTab === 'browse' ? (
                     // Show search results or all files when clean repo
@@ -450,7 +431,7 @@ export default function FilesScreen() {
                             ))}
                         </>
                     )
-                ) : (
+                ) : gitStatusFiles ? (
                     <>
                         {/* Staged Changes Section */}
                         {gitStatusFiles.stagedFiles.length > 0 && (
@@ -518,7 +499,7 @@ export default function FilesScreen() {
                             </>
                         )}
                     </>
-                )}
+                ) : null}
             </ItemList>
         </View>
     );

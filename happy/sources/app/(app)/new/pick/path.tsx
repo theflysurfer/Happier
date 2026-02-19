@@ -11,6 +11,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { layout } from '@/components/layout';
 import { t } from '@/text';
 import { MultiTextInput, MultiTextInputHandle } from '@/components/MultiTextInput';
+import { FolderBrowser } from '@/components/FolderBrowser';
 
 const stylesheet = StyleSheet.create((theme) => ({
     container: {
@@ -70,6 +71,8 @@ export default function PathPickerScreen() {
     const recentMachinePaths = useSetting('recentMachinePaths');
 
     const [customPath, setCustomPath] = useState(params.selectedPath || '');
+    const [showBrowser, setShowBrowser] = useState(false);
+    const browseRootPath = useSetting('browseRootPath');
 
     // Get the selected machine
     const machine = useMemo(() => {
@@ -223,6 +226,36 @@ export default function PathPickerScreen() {
                                 </View>
                             </View>
                         </ItemGroup>
+
+                        {/* Browse Folders button */}
+                        {machine && (
+                            <ItemGroup title={t('files.browseTitle')}>
+                                <Item
+                                    title={showBrowser ? t('files.hideBrowser') : t('files.browseButton')}
+                                    leftElement={
+                                        <Ionicons
+                                            name={showBrowser ? 'folder-open' : 'folder-outline'}
+                                            size={18}
+                                            color={theme.colors.textLink}
+                                        />
+                                    }
+                                    onPress={() => setShowBrowser(!showBrowser)}
+                                    showChevron={false}
+                                    showDivider={false}
+                                />
+                                {showBrowser && (
+                                    <View style={{ height: 300, borderTopWidth: 1, borderTopColor: theme.colors.divider }}>
+                                        <FolderBrowser
+                                            machineId={machine.id}
+                                            rootPath={browseRootPath || machine.metadata?.homeDir || '/home'}
+                                            onSelectPath={(path) => {
+                                                setCustomPath(path);
+                                            }}
+                                        />
+                                    </View>
+                                )}
+                            </ItemGroup>
+                        )}
 
                         {recentPaths.length > 0 && (
                             <ItemGroup title="Recent Paths">

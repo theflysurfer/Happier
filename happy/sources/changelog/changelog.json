@@ -1,6 +1,21 @@
 {
   "entries": [
     {
+      "version": 7,
+      "date": "2026-02-18",
+      "summary": "This release adds powerful data viewers and improves the new session creation experience with folder browsing.",
+      "changes": [
+        "Added SQLite database viewer: browse tables, run SQL queries, sort columns, and annotate individual cells",
+        "Added CSV/TSV table viewer: parse and display tabular data with sorting, filtering, row numbers, and cell annotations",
+        "Added tabular annotation system: tap any cell in SQLite or CSV viewers to add comments, exported as formatted markdown for LLM review",
+        "Added folder browser in new session creation: browse remote machine directories with an expandable tree view",
+        "Added configurable root folder for the folder browser (default: home directory, configurable in settings)",
+        "Fixed files screen for non-git repositories: file browsing now works on any project, git features hidden when unavailable",
+        "Fixed native Android build: documented `subst` drive approach for paths with spaces/parentheses"
+      ],
+      "rawMarkdown": "## Version 7 - 2026-02-18\n\r\n\r\nThis release adds powerful data viewers and improves the new session creation experience with folder browsing.\r\n\r\n- Added SQLite database viewer: browse tables, run SQL queries, sort columns, and annotate individual cells\r\n- Added CSV/TSV table viewer: parse and display tabular data with sorting, filtering, row numbers, and cell annotations\r\n- Added tabular annotation system: tap any cell in SQLite or CSV viewers to add comments, exported as formatted markdown for LLM review\r\n- Added folder browser in new session creation: browse remote machine directories with an expandable tree view\r\n- Added configurable root folder for the folder browser (default: home directory, configurable in settings)\r\n- Fixed files screen for non-git repositories: file browsing now works on any project, git features hidden when unavailable\r\n- Fixed native Android build: documented `subst` drive approach for paths with spaces/parentheses"
+    },
+    {
       "version": 6,
       "date": "2026-02-18",
       "summary": "This release brings a major overhaul to the file management and annotation experience, making Happy the ideal companion for reviewing and annotating LLM-generated content.",
@@ -90,5 +105,5 @@
       "rawMarkdown": "## Version 1 - 2025-05-12\n\r\n\r\nWelcome to Happy - your secure, encrypted mobile companion for Claude Code. This inaugural release establishes the foundation for private, powerful AI interactions on the go.\r\n\r\n- Implemented end-to-end encrypted session management ensuring complete privacy\r\n- Integrated intelligent voice assistant with natural conversation capabilities\r\n- Added experimental file manager with syntax highlighting and tree navigation\r\n- Built seamless real-time synchronization across all your devices\r\n- Established native support for iOS, Android, and responsive web interfaces"
     }
   ],
-  "latestVersion": 6
+  "latestVersion": 7
 }

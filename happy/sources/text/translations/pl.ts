@@ -563,6 +563,15 @@ export const pl: TranslationStructure = {
         file: 'Plik',
         fileEmpty: 'Plik jest pusty',
         noChanges: 'Brak zmian do wyświetlenia',
+        loadingCsv: 'Ładowanie tabeli...',
+        loadingSqlite: 'Ładowanie bazy danych...',
+        annotateCell: 'Opisz komórkę',
+        annotationPlaceholder: 'Dodaj komentarz do tej wartości...',
+        browseTitle: 'Przeglądaj foldery',
+        browseButton: 'Przeglądaj na maszynie...',
+        hideBrowser: 'Ukryj przeglądarkę',
+        browsingFolder: 'Ładowanie folderów...',
+        emptyFolder: 'Nie znaleziono folderów',
     },
 
     settingsVoice: {

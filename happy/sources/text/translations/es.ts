@@ -553,6 +553,15 @@ export const es: TranslationStructure = {
         file: 'Archivo',
         fileEmpty: 'El archivo está vacío',
         noChanges: 'No hay cambios que mostrar',
+        loadingCsv: 'Cargando tabla...',
+        loadingSqlite: 'Cargando base de datos...',
+        annotateCell: 'Anotar celda',
+        annotationPlaceholder: 'Añade un comentario sobre este valor...',
+        browseTitle: 'Explorar carpetas',
+        browseButton: 'Explorar en la máquina...',
+        hideBrowser: 'Ocultar explorador',
+        browsingFolder: 'Cargando carpetas...',
+        emptyFolder: 'No se encontraron carpetas',
     },
 
     settingsVoice: {

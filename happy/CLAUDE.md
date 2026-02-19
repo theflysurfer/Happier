@@ -583,7 +583,7 @@ A resilient testing script is available at `scripts/android-test.sh`:
 
 ### Known Issues
 
-- **Path with spaces/parentheses**: `npx expo run:android` (native build) fails because CMake/ninja cannot handle spaces in the project path (`2026.01 Happy (Claude Code remote)`). Workaround: use EAS Build (`eas build`) or symlink the project to a path without spaces.
+- **Path with spaces/parentheses**: `npx expo run:android` (native build) fails because CMake/ninja cannot handle spaces in the project path (`2026.01 Happy (Claude Code remote)`). Workaround: use `subst I:` virtual drive (see "Deploying Code to Device" section). Also requires `reactNativeDir`/`codegenDir` overrides in `android/app/build.gradle` to avoid codegen "different roots" error.
 - **Stale emulator locks**: If the emulator crashes, `.lock` files remain in `~/.android/avd/happy_test.avd/`. The test script auto-cleans these.
 - **ANR dialogs**: The emulator may show "app isn't responding" dialogs on first boot. The script dismisses them automatically.
 - **Dev client vs release APK**: The installed APK may be a release build without dev-client support. To get live Metro reloading, build with `eas build --profile development --platform android` or `npx expo run:android` (requires path fix).
@@ -609,11 +609,16 @@ yarn ota:production
 
 ### Feature Implementation Status
 
-#### Completed (Phase 1-4)
+#### Completed (Phase 1-6)
 - **File Manager**: Arborescent tree view with CRUD (`sources/app/(app)/session/[id]/file-manager.tsx`)
 - **Code Editor**: TextInput-based IDE with line numbers (`sources/components/editor/CodeEditor.tsx`)
 - **Markdown Preview**: Split/edit/preview modes (`sources/app/(app)/session/[id]/markdown-preview.tsx`)
 - **Plannotator**: Annotation system with review tags and MMKV persistence (`sources/app/(app)/session/[id]/annotate.tsx`)
+- **SQLite Viewer**: WebView + sql.js WASM database browser with table list, SQL query, sorting, cell annotations (`sources/components/viewers/SqliteViewer.tsx`)
+- **CSV Viewer**: WebView + PapaParse table viewer with sorting, filtering, cell annotations (`sources/components/viewers/CsvViewer.tsx`)
+- **Tabular Annotations**: MMKV storage for cell-level annotations on SQLite/CSV data, with LLM export (`sources/plannotator/storage/tabularAnnotationStorage.ts`)
+- **Folder Browser**: Tree-based directory browser using `machineBash` for new session path selection (`sources/components/FolderBrowser.tsx`, integrated in path picker)
+- **Files screen non-git**: Browse/manage files even without git repository
 
 #### Pending
 - Auto-update "play store style" via EAS Update (push new features to installed APKs without Play Store)
@@ -622,32 +627,80 @@ yarn ota:production
 
 **Preferred method: Local native build (no EAS login needed)**
 
-A junction link exists at `C:\Dev\happy` pointing to the project. Use it for native builds (the real path has spaces/parentheses which break Gradle/CMake):
+The real project path has spaces and parentheses which break Gradle/CMake. Use `subst` to create a virtual drive:
 
 ```bash
-cd /c/Dev/happy && ANDROID_HOME=/c/Dev/android APP_ENV=development npx expo run:android
+# Create virtual drive (one-time, must point to PARENT of happy/ dir, not happy/ itself)
+subst I: "C:\Users\julien\OneDrive\Coding\_Projets de code\2026.01 Happy (Claude Code remote)"
+# Build from I:\happy (no spaces/parens, and package.json is NOT at drive root)
+cd /i/happy && ANDROID_HOME=/c/Dev/android APP_ENV=development npx expo run:android
 ```
+
+**Two Windows `subst` pitfalls to avoid:**
+
+1. **Drive-root edge case**: The subst target must be the PARENT directory (not `happy/` itself). If `package.json` is at the drive root (`I:\package.json`), expo-autolinking's `findPackageJsonPathAsync` won't find it because its walk-up loop (`for (let dir = root; path.dirname(dir) !== dir; ...)`) exits before checking the drive root.
+
+2. **Codegen "different roots" error**: React Native's codegen uses `File.relativeTo()` (Kotlin/Java) which fails when paths have different drive letters. Node.js resolves `require.resolve(...)` back to the real `C:\` path even when run from `I:\`, so `codegenDir` and `reactNativeDir` end up on `C:` while the project is on `I:`. **Fix**: In `android/app/build.gradle`, override `reactNativeDir` and `codegenDir` with `file()` relative paths instead of `node --print require.resolve(...)`:
+   ```groovy
+   reactNativeDir = file("../../node_modules/react-native")
+   codegenDir = file("../../node_modules/@react-native/codegen")
+   ```
+   This keeps all paths on the same drive root. The relevant crash site is in `@react-native/gradle-plugin/shared/.../Os.kt` → `cliPath()` → `this.relativeTo(base).path`.
 
 This builds the APK locally with Gradle, installs it on the connected device via ADB, and starts Metro for live reloading. Takes ~5-10 min for a full build, subsequent builds are faster (incremental).
 
 **Prerequisites:**
-- Device connected via USB: `adb devices` should show the device
-- Junction exists: `ls /c/Dev/happy` (if not: `cmd /c "mklink /J C:\Dev\happy <full-project-path>"`)
+- Device connected via USB or WiFi: `adb devices` should show the device
+- Subst drive exists: `subst` to check (if not: run the command above)
 - Android SDK at `C:\Dev\android` (ANDROID_HOME)
 - Java 17+ installed
 
-**Alternative: OTA updates (requires EAS login)**
+**Preferred method: EAS Build (cloud, avoids all Windows path issues)**
+
+EAS Build runs on Linux servers — no path length limits, no OneDrive file locks, no `subst` needed.
+
+```bash
+# Set env vars (required in Claude Code sessions where stdin is not a TTY)
+export EXPO_TOKEN="<your-expo-token>"
+export NODE_OPTIONS="--max-old-space-size=8192"
+export EAS_SKIP_AUTO_FINGERPRINT=1
+
+# Build dev APK in the cloud
+cd /i/happy && npx eas-cli build --platform android --profile development --non-interactive
+```
+
+**EAS Build setup (fork):**
+- Owner: `jlt13400` (not `bulkacorp` — this is a fork)
+- Project: `@jlt13400/happy` (projectId in `app.config.js`)
+- Credentials: `credentials.json` with local keystore (set `"credentialsSource": "local"` in `eas.json`)
+- `.easignore`: Must exclude `.cxx/` (CMake build artifacts with Windows-specific long paths crash `tar` on EAS Linux workers)
+- `EAS_SKIP_AUTO_FINGERPRINT=1`: Required when running from `subst` drive — fingerprint scanner resolves symlinks back to `C:\` path and creates invalid `I:\happy\C:\Users\...` paths
+- Token: Get from https://expo.dev/settings/access-tokens (personal token, not robot)
+- `--non-interactive`: Required in Claude Code (no TTY for interactive prompts)
+
+**Known EAS Build issues:**
+- ~~Keystore generation~~ → Solved with `credentialsSource: "local"` + `credentials.json`
+- ~~Archive too large~~ → Solved with `.easignore` (375 MB → should be ~50 MB without `.cxx/`)
+- ~~`tar: Cannot mkdir` errors~~ → Solved by excluding `.cxx/` in `.easignore`
+
+**Alternative: OTA updates (JS-only changes)**
 
 For JS-only changes (no native module changes), OTA is faster (~30s):
 ```bash
-npx eas-cli login   # One-time login with Expo account (bulkacorp)
+export EXPO_TOKEN="<your-expo-token>"
 yarn ota             # Push JS update to preview channel
 ```
 
 **Important notes:**
-- The installed APK (`com.slopus.happy.dev` v1.6.2) is a **preview build without dev-client**. Metro hot-reload will NOT work with it. You must rebuild with `expo run:android` to get a dev-client APK.
-- After rebuilding with `expo run:android`, the new APK WILL support Metro. Subsequent code changes will be instant via hot-reload without rebuilding.
-- `yarn ota` uses `eas update --branch preview` which requires EAS authentication.
+- The installed APK (`com.slopus.happy.dev` v1.6.2) is a **preview build without dev-client**. Metro hot-reload will NOT work with it. You must rebuild with EAS Build or `expo run:android` to get a dev-client APK.
+- After rebuilding, the new APK WILL support Metro. Subsequent code changes will be instant via hot-reload without rebuilding.
+
+### Node.js Memory (OOM Prevention)
+
+- `NODE_OPTIONS="--max-old-space-size=8192"` is set in PowerShell profile and Windows User env var
+- **CRITICAL**: If this is set to `512` (old value), Claude Code sessions and `tsc` will crash with `FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory`
+- The PowerShell profile value overrides the Windows env var — always check both
+- Verify: `node -e "console.log(Math.round(require('v8').getHeapStatistics().heap_size_limit / 1024 / 1024), 'MB')"` should show ~8240 MB
 
 ### TypeScript Note
 - `sources/sync/typesRaw.spec.ts` has ~112 pre-existing type errors (union type narrowing issues). These are NOT from our changes and do not affect the app.

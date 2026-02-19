@@ -553,6 +553,15 @@ export const ca: TranslationStructure = {
         file: 'Fitxer',
         fileEmpty: 'El fitxer està buit',
         noChanges: 'No hi ha canvis a mostrar',
+        loadingCsv: 'Carregant taula...',
+        loadingSqlite: 'Carregant base de dades...',
+        annotateCell: 'Anotar cel·la',
+        annotationPlaceholder: 'Afegeix un comentari sobre aquest valor...',
+        browseTitle: 'Explorar carpetes',
+        browseButton: 'Explorar a la màquina...',
+        hideBrowser: 'Amagar explorador',
+        browsingFolder: 'Carregant carpetes...',
+        emptyFolder: 'No s\'han trobat carpetes',
     },
 
     settingsVoice: {
