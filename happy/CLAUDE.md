@@ -720,9 +720,11 @@ yarn ota
 # Production channel (via EAS Workflow)
 yarn ota:production
 
-# Manual push to any branch
-eas update --branch preview --message "description of changes"
+# Manual push to development branch (Android only, no iPhone)
+EAS_SKIP_AUTO_FINGERPRINT=1 eas update --branch development --platform android --message "description" --non-interactive
 ```
+
+**IMPORTANT**: Always use `--platform android` — there is no iPhone to target. This skips the iOS bundle and speeds up the push.
 
 **Requirements for OTA to work:**
 - The APK must include `expo-updates` (all builds do)
@@ -737,7 +739,8 @@ eas update --branch preview --message "description of changes"
 | Dev build + Metro | `cd /c/h && ANDROID_HOME=/c/Dev/android APP_ENV=development npx expo run:android` |
 | Release APK (local) | `cd /c/h/android && ANDROID_HOME=/c/Dev/android ./gradlew app:assembleRelease` |
 | Cloud build (EAS) | `cd /c/h && eas build --platform android --profile development --non-interactive` |
-| OTA update | `yarn ota` |
+| OTA update (dev) | `EAS_SKIP_AUTO_FINGERPRINT=1 eas update --branch development --platform android --message "..." --non-interactive` |
+| OTA update (preview) | `yarn ota` |
 | Install APK on device | `adb install -r C:\h\android\app\build\outputs\apk\release\app-release.apk` |
 | Uninstall + reinstall | `adb uninstall com.slopus.happy.dev && adb install <apk>` |
 | Create junction (once) | `cmd /c 'mklink /J C:\h "<full-path>\happy"'` |
@@ -753,6 +756,19 @@ eas update --branch preview --message "description of changes"
 - ~~**Gradle metaspace warning**~~ → Harmless. Daemon restarts next build. Can increase `org.gradle.jvmargs` in `gradle.properties` if desired.
 
 **If `prebuild --clean` is run**: the signing config in `android/app/build.gradle` and `android/gradle.properties` will be lost. Re-apply the `signingConfigs.release` block and the `HAPPY_RELEASE_*` properties.
+
+### Bug Workflow (Testing on Device)
+
+When testing features on the S22 and finding bugs, follow this workflow for **each bug**:
+
+1. **Create GitHub issue**: `gh issue create --repo theflysurfer/Happier --title "..." --body "..."`
+2. **Fix the code**
+3. **Typecheck**: `NODE_OPTIONS="--max-old-space-size=8192" ./node_modules/.bin/tsc --noEmit` (0 errors excluding spec files)
+4. **Commit**: Reference the issue number (`Closes #N`)
+5. **OTA push**: `EAS_SKIP_AUTO_FINGERPRINT=1 eas update --branch development --platform android --message "fix: ... (#N)" --non-interactive`
+6. **Verify on device**: Force-close the app, reopen, check the fix
+
+**Git tree must be clean** before OTA push (`requireCommit: true`). Commit all changes first.
 
 ### Node.js Memory (OOM Prevention)
 
