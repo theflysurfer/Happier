@@ -111,6 +111,27 @@ export function parseMarkdownBlock(markdown: string) {
             continue;
         }
 
+        // Skip system XML tags (task-notification, system-reminder, etc.)
+        if (/^<(task-notification|system-reminder|output-file|status|summary|context|antArtifact|antml)[^>]*>/.test(trimmed)) {
+            // Consume lines until closing tag
+            const tagMatch = trimmed.match(/^<(\S+?)[\s>]/);
+            if (tagMatch) {
+                const tag = tagMatch[1];
+                const closingTag = `</${tag}>`;
+                // Check if self-closing on same line
+                if (!trimmed.includes(closingTag)) {
+                    while (index < lines.length) {
+                        if (lines[index].trim().includes(closingTag)) {
+                            index++;
+                            break;
+                        }
+                        index++;
+                    }
+                }
+            }
+            continue;
+        }
+
         // Options block
         if (trimmed.startsWith('<options>')) {
             let items: string[] = [];

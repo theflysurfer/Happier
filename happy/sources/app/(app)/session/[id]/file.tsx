@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { View, ScrollView, ActivityIndicator, Platform, Pressable, TouchableOpacity } from 'react-native';
-import { useRoute, useNavigation } from '@react-navigation/native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRoute } from '@react-navigation/native';
+import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Text } from '@/components/StyledText';
 import { SimpleSyntaxHighlighter } from '@/components/SimpleSyntaxHighlighter';
 import { CodeEditor } from '@/components/editor/CodeEditor';
@@ -124,7 +124,6 @@ const DiffDisplay: React.FC<{ diffContent: string }> = ({ diffContent }) => {
 export default function FileScreen() {
     const route = useRoute();
     const router = useRouter();
-    const navigation = useNavigation();
     const { theme } = useUnistyles();
     const { id: sessionId } = useLocalSearchParams<{ id: string }>();
     const searchParams = useLocalSearchParams();
@@ -191,11 +190,11 @@ export default function FileScreen() {
     // Check if file is markdown
     const isMarkdown = filePath.endsWith('.md') || filePath.endsWith('.mdx');
 
-    // Set header buttons dynamically
-    React.useEffect(() => {
-        if (isLoading || !fileContent || fileContent.isBinary) return;
+    // Header buttons rendered via Stack.Screen options (expo-router idiomatic approach)
+    const headerRight = React.useCallback(() => {
+        if (isLoading || !fileContent || fileContent.isBinary) return null;
 
-        const headerButtons = () => (
+        return (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 {/* Markdown preview button */}
                 {isMarkdown && !editor.isEditMode && (
@@ -250,13 +249,9 @@ export default function FileScreen() {
                 )}
             </View>
         );
-
-        navigation.setOptions({
-            headerRight: headerButtons,
-        });
     }, [
         isLoading, fileContent, editor.isEditMode, editor.isDirty, editor.isSaving,
-        isMarkdown, navigation, theme, sessionId, encodedPath, router,
+        isMarkdown, theme, sessionId, encodedPath, router,
         editor.enterEditMode, editor.exitEditMode, editor.saveFile,
     ]);
 
@@ -604,6 +599,7 @@ export default function FileScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.colors.surface }]}>
+            <Stack.Screen options={{ headerRight }} />
 
             {/* File path header */}
             <View style={{
