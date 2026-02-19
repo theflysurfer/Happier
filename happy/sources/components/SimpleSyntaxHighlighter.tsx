@@ -1,12 +1,20 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { Text, View, FlatList, type ViewStyle, type ListRenderItemInfo } from 'react-native';
 import { useUnistyles } from 'react-native-unistyles';
 import { Typography } from '@/constants/Typography';
+
+interface Token {
+  text: string;
+  type: string;
+  nestLevel?: number;
+}
 
 interface SimpleSyntaxHighlighterProps {
   code: string;
   language: string | null;
   selectable: boolean;
+  /** Rendered as its own scrollable FlatList — do NOT wrap in ScrollView */
+  style?: ViewStyle;
 }
 
 // Get theme-aware colors
@@ -61,8 +69,8 @@ const openBrackets = Object.keys(bracketPairs);
 const closeBrackets = Object.values(bracketPairs);
 
 // Enhanced tokenizer with comprehensive token types
-const tokenizeCode = (code: string, language: string | null) => {
-  const tokens: Array<{ text: string; type: string; nestLevel?: number }> = [];
+const tokenizeCode = (code: string, language: string | null): Token[] => {
+  const tokens: Token[] = [];
   
   if (!language) {
     return [{ text: code, type: 'default' }];
@@ -247,16 +255,58 @@ const tokenizeCode = (code: string, language: string | null) => {
   return tokens;
 };
 
+// Group flat token array into lines (split on '\n' tokens)
+function groupTokensByLine(tokens: Token[]): Token[][] {
+  const lines: Token[][] = [[]];
+  for (const token of tokens) {
+    if (token.text === '\n') {
+      lines.push([]);
+    } else {
+      lines[lines.length - 1].push(token);
+    }
+  }
+  return lines;
+}
+
+// Memoized single-line renderer — only re-renders when its tokens change
+const SyntaxLine = React.memo(({ tokens, colorFn, monoFamily }: {
+  tokens: Token[];
+  colorFn: (type: string, nestLevel?: number) => string;
+  monoFamily: string;
+}) => (
+  <Text style={{ fontFamily: monoFamily, fontSize: 14, lineHeight: 20 }}>
+    {tokens.length === 0 ? ' ' : tokens.map((token, i) => (
+      <Text
+        key={i}
+        style={{
+          color: colorFn(token.type, token.nestLevel),
+          fontFamily: monoFamily,
+          fontWeight: boldTypes.has(token.type) ? '600' : '400',
+        }}
+      >
+        {token.text}
+      </Text>
+    ))}
+  </Text>
+));
+
+const boldTypes = new Set(['keyword', 'controlFlow', 'type', 'function']);
+
 export const SimpleSyntaxHighlighter: React.FC<SimpleSyntaxHighlighterProps> = ({
   code,
   language,
-  selectable
+  selectable,
+  style,
 }) => {
   const { theme } = useUnistyles();
-  const colors = getColors(theme);
-  const tokens = tokenizeCode(code, language);
+  const colors = React.useMemo(() => getColors(theme), [theme]);
+  const monoFamily = Typography.mono().fontFamily;
 
-  const getColorForType = (type: string, nestLevel?: number): string => {
+  // Memoize expensive tokenization — only re-runs when code or language changes
+  const tokens = React.useMemo(() => tokenizeCode(code, language), [code, language]);
+  const lines = React.useMemo(() => groupTokensByLine(tokens), [tokens]);
+
+  const getColorForType = React.useCallback((type: string, nestLevel?: number): string => {
     switch (type) {
       case 'keyword': return colors.keyword;
       case 'controlFlow': return colors.controlFlow;
@@ -280,43 +330,36 @@ export const SimpleSyntaxHighlighter: React.FC<SimpleSyntaxHighlighterProps> = (
       case 'variable': return colors.variable;
       case 'parameter': return colors.parameter;
       case 'punctuation': return colors.punctuation;
-      case 'bracket': 
+      case 'bracket':
         switch ((nestLevel || 1) % 5) {
           case 1: return colors.bracket1;
           case 2: return colors.bracket2;
           case 3: return colors.bracket3;
           case 4: return colors.bracket4;
-          case 0: return colors.bracket5; // Level 5, 10, 15, etc.
+          case 0: return colors.bracket5;
           default: return colors.bracket1;
         }
       default: return colors.default;
     }
-  };
+  }, [colors]);
+
+  const renderLine = React.useCallback(({ item }: ListRenderItemInfo<Token[]>) => (
+    <SyntaxLine tokens={item} colorFn={getColorForType} monoFamily={monoFamily} />
+  ), [getColorForType, monoFamily]);
+
+  const keyExtractor = React.useCallback((_: Token[], index: number) => String(index), []);
 
   return (
-    <View>
-      <Text 
-        selectable={selectable}
-        style={{ 
-          fontFamily: Typography.mono().fontFamily,
-          fontSize: 14,
-          lineHeight: 20,
-        }}
-      >
-        {tokens.map((token, index) => (
-          <Text
-            key={index}
-            selectable={selectable}
-            style={{
-              color: getColorForType(token.type, token.nestLevel),
-              fontFamily: Typography.mono().fontFamily,
-              fontWeight: ['keyword', 'controlFlow', 'type', 'function'].includes(token.type) ? '600' : '400',
-            }}
-          >
-            {token.text}
-          </Text>
-        ))}
-      </Text>
-    </View>
+    <FlatList
+      data={lines}
+      renderItem={renderLine}
+      keyExtractor={keyExtractor}
+      initialNumToRender={40}
+      maxToRenderPerBatch={30}
+      windowSize={10}
+      removeClippedSubviews={true}
+      style={style}
+      contentContainerStyle={{ padding: 16 }}
+    />
   );
 }; 

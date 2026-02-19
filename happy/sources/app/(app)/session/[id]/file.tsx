@@ -694,6 +694,14 @@ export default function FileScreen() {
                     onChange={editor.setEditedContent}
                     editable={true}
                 />
+            ) : displayMode === 'file' && fileContent?.content ? (
+                /* SimpleSyntaxHighlighter uses its own FlatList — no ScrollView wrapper */
+                <SimpleSyntaxHighlighter
+                    code={fileContent.content}
+                    language={language}
+                    selectable={true}
+                    style={{ flex: 1 }}
+                />
             ) : (
                 <ScrollView
                     style={{ flex: 1 }}
@@ -702,12 +710,6 @@ export default function FileScreen() {
                 >
                     {displayMode === 'diff' && diffContent ? (
                         <DiffDisplay diffContent={diffContent} />
-                    ) : displayMode === 'file' && fileContent?.content ? (
-                        <SimpleSyntaxHighlighter
-                            code={fileContent.content}
-                            language={language}
-                            selectable={true}
-                        />
                     ) : displayMode === 'file' && fileContent && !fileContent.content ? (
                         <Text style={{
                             fontSize: 16,
