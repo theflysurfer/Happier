@@ -625,75 +625,134 @@ yarn ota:production
 
 ### Deploying Code to Device
 
-**Preferred method: Local native build (no EAS login needed)**
+#### Prerequisites
 
-The real project path has spaces and parentheses which break Gradle/CMake. Use `subst` to create a virtual drive:
+- **Android SDK** at `C:\Dev\android` (`ANDROID_HOME`)
+- **Java 17+** installed
+- **Device connected** via USB or WiFi: `adb devices` should show it
+- **Junction `C:\h`** must exist (see Step 0)
 
-```bash
-# Create virtual drive (one-time, must point to PARENT of happy/ dir, not happy/ itself)
-subst I: "C:\Users\julien\OneDrive\Coding\_Projets de code\2026.01 Happy (Claude Code remote)"
-# Build from I:\happy (no spaces/parens, and package.json is NOT at drive root)
-cd /i/happy && ANDROID_HOME=/c/Dev/android APP_ENV=development npx expo run:android
+#### Step 0: Create junction (one-time)
+
+The real project path has spaces and parentheses which break CMake/ninja (260-char path limit). A **Windows junction** is required — `subst` drives are NOT sufficient because ninja resolves through them to the real path.
+
+```powershell
+# In PowerShell (admin not required for junctions to own dirs)
+cmd /c 'mklink /J C:\h "C:\Users\julien\OneDrive\Coding\_Projets de code\2026.01 Happy (Claude Code remote)\happy"'
 ```
 
-**Two Windows `subst` pitfalls to avoid:**
+**Verify**: `ls C:\h\package.json` should exist.
 
-1. **Drive-root edge case**: The subst target must be the PARENT directory (not `happy/` itself). If `package.json` is at the drive root (`I:\package.json`), expo-autolinking's `findPackageJsonPathAsync` won't find it because its walk-up loop (`for (let dir = root; path.dirname(dir) !== dir; ...)`) exits before checking the drive root.
+**Why not subst?** Subst creates a virtual drive letter but ninja's `Stat()` resolves the real path, hitting the 260-char limit. Junctions are filesystem-level redirects that ninja follows without resolving.
 
-2. **Codegen "different roots" error**: React Native's codegen uses `File.relativeTo()` (Kotlin/Java) which fails when paths have different drive letters. Node.js resolves `require.resolve(...)` back to the real `C:\` path even when run from `I:\`, so `codegenDir` and `reactNativeDir` end up on `C:` while the project is on `I:`. **Fix**: In `android/app/build.gradle`, override `reactNativeDir` and `codegenDir` with `file()` relative paths instead of `node --print require.resolve(...)`:
-   ```groovy
-   reactNativeDir = file("../../node_modules/react-native")
-   codegenDir = file("../../node_modules/@react-native/codegen")
-   ```
-   This keeps all paths on the same drive root. The relevant crash site is in `@react-native/gradle-plugin/shared/.../Os.kt` → `cliPath()` → `this.relativeTo(base).path`.
+**Legacy subst drive `I:`** may still exist for EAS/expo commands (maps to repo root, not `happy/`). It's optional.
 
-This builds the APK locally with Gradle, installs it on the connected device via ADB, and starts Metro for live reloading. Takes ~5-10 min for a full build, subsequent builds are faster (incremental).
+**Codegen "different roots"**: Already fixed in `android/app/build.gradle` with relative `file()` paths for `reactNativeDir` and `codegenDir`.
 
-**Prerequisites:**
-- Device connected via USB or WiFi: `adb devices` should show the device
-- Subst drive exists: `subst` to check (if not: run the command above)
-- Android SDK at `C:\Dev\android` (ANDROID_HOME)
-- Java 17+ installed
+#### Method 1: Local dev build (for development with hot-reload)
 
-**Preferred method: EAS Build (cloud, avoids all Windows path issues)**
-
-EAS Build runs on Linux servers — no path length limits, no OneDrive file locks, no `subst` needed.
+Builds debug APK locally, installs via ADB, starts Metro for hot-reload.
 
 ```bash
-# Set env vars (required in Claude Code sessions where stdin is not a TTY)
-export EXPO_TOKEN="<your-expo-token>"
-export NODE_OPTIONS="--max-old-space-size=8192"
+cd /c/h && ANDROID_HOME=/c/Dev/android APP_ENV=development npx expo run:android
+```
+
+To target a specific device: `npx expo run:android -d` (lists connected devices).
+
+#### Method 2: Local release APK (PREFERRED for personal APK)
+
+Signed release APK with hardcoded secret key. No Metro needed. Self-contained.
+
+```bash
+# Prebuild if android/ doesn't exist
+cd /c/h && APP_ENV=development npx expo prebuild
+
+# Build signed release APK
+cd /c/h/android && ANDROID_HOME=/c/Dev/android ./gradlew app:assembleRelease
+```
+
+**Output**: `C:\h\android\app\build\outputs\apk\release\app-release.apk` (167 MB)
+
+**Install on device**:
+```bash
+# If same signing key as existing install:
+adb install -r C:\h\android\app\build\outputs\apk\release\app-release.apk
+
+# If different signing key (e.g. switching from EAS build to local):
+adb uninstall com.slopus.happy.dev
+adb install C:\h\android\app\build\outputs\apk\release\app-release.apk
+```
+
+**Signing config** (already set up in `android/app/build.gradle` + `android/gradle.properties`):
+- Keystore: `happy.jks` at repo root (path: `../../../happy.jks` from `android/app/`)
+- Key alias: `happy-key`
+- Passwords in `android/gradle.properties` (`HAPPY_RELEASE_*` properties)
+
+**Auto-login**: The hardcoded secret is loaded from `.env.local` (`EXPO_PUBLIC_HARDCODED_SECRET`) and auto-authenticates on first launch.
+
+#### Method 3: EAS Build (cloud, backup option)
+
+Cloud build on Linux servers. Avoids all Windows path issues. Free tier = 10 builds/month.
+
+```bash
+# Login first: eas login (or export EXPO_TOKEN=...)
 export EAS_SKIP_AUTO_FINGERPRINT=1
 
-# Build dev APK in the cloud
-cd /i/happy && npx eas-cli build --platform android --profile development --non-interactive
+# IMPORTANT: working tree must be clean (requireCommit: true in eas.json)
+cd /c/h && eas build --platform android --profile development --non-interactive
 ```
 
-**EAS Build setup (fork):**
-- Owner: `jlt13400` (not `bulkacorp` — this is a fork)
-- Project: `@jlt13400/happy` (projectId in `app.config.js`)
-- Credentials: `credentials.json` with local keystore (set `"credentialsSource": "local"` in `eas.json`)
-- `.easignore`: Must exclude `.cxx/` (CMake build artifacts with Windows-specific long paths crash `tar` on EAS Linux workers)
-- `EAS_SKIP_AUTO_FINGERPRINT=1`: Required when running from `subst` drive — fingerprint scanner resolves symlinks back to `C:\` path and creates invalid `I:\happy\C:\Users\...` paths
-- Token: Get from https://expo.dev/settings/access-tokens (personal token, not robot)
-- `--non-interactive`: Required in Claude Code (no TTY for interactive prompts)
+**EAS setup:**
+- Owner: `jlt13400` | Project: `@jlt13400/happy`
+- `eas.json` has `"requireCommit": true` → uses `git archive` (fixes Windows tar Permission Denied bug)
+- `.easignore` excludes `.cxx/` build artifacts
+- `credentials.json` has local keystore config
+- Dashboard: https://expo.dev/accounts/jlt13400/projects/happy/builds
 
-**Known EAS Build issues:**
-- ~~Keystore generation~~ → Solved with `credentialsSource: "local"` + `credentials.json`
-- ~~Archive too large~~ → Solved with `.easignore` (375 MB → should be ~50 MB without `.cxx/`)
-- ~~`tar: Cannot mkdir` errors~~ → Solved by excluding `.cxx/` in `.easignore`
+#### OTA Updates (JS-only changes, no rebuild needed)
 
-**Alternative: OTA updates (JS-only changes)**
+Push JS bundle updates to already-installed APKs. Works regardless of how the APK was built.
 
-For JS-only changes (no native module changes), OTA is faster (~30s):
 ```bash
-export EXPO_TOKEN="<your-expo-token>"
-yarn ota             # Push JS update to preview channel
+# Preview channel (runs typecheck + changelog parse + push)
+yarn ota
+
+# Production channel (via EAS Workflow)
+yarn ota:production
+
+# Manual push to any branch
+eas update --branch preview --message "description of changes"
 ```
 
-**Important notes:**
-- The installed APK (`com.slopus.happy.dev` v1.6.2) is a **preview build without dev-client**. Metro hot-reload will NOT work with it. You must rebuild with EAS Build or `expo run:android` to get a dev-client APK.
-- After rebuilding, the new APK WILL support Metro. Subsequent code changes will be instant via hot-reload without rebuilding.
+**Requirements for OTA to work:**
+- The APK must include `expo-updates` (all builds do)
+- Runtime version must match (`"18"` currently). Bump it when native code changes.
+- Channel must match: dev APK → `development` channel, preview → `preview`, etc.
+- `app.config.js` sets the channel via `updates.requestHeaders["expo-channel-name"]`
+
+#### Quick Reference
+
+| Task | Command |
+|------|---------|
+| Dev build + Metro | `cd /c/h && ANDROID_HOME=/c/Dev/android APP_ENV=development npx expo run:android` |
+| Release APK (local) | `cd /c/h/android && ANDROID_HOME=/c/Dev/android ./gradlew app:assembleRelease` |
+| Cloud build (EAS) | `cd /c/h && eas build --platform android --profile development --non-interactive` |
+| OTA update | `yarn ota` |
+| Install APK on device | `adb install -r C:\h\android\app\build\outputs\apk\release\app-release.apk` |
+| Uninstall + reinstall | `adb uninstall com.slopus.happy.dev && adb install <apk>` |
+| Create junction (once) | `cmd /c 'mklink /J C:\h "<full-path>\happy"'` |
+
+#### Known Issues (all solved)
+
+- ~~**260-char path limit** (ninja `Stat()`)~~ → Fixed: use junction `C:\h` instead of subst
+- ~~**`tar: Permission denied`** (EAS)~~ → Fixed: `requireCommit: true` uses `git archive`
+- ~~**Archive too large (375 MB)**~~ → Fixed: 204 MB with `git archive`
+- ~~**`.cxx/` crashes tar**~~ → Fixed: `.cxx/` in `.gitignore` + `.easignore`
+- ~~**Signing mismatch on install**~~ → Fixed: `adb uninstall` then fresh install
+- ~~**Kotlin daemon crash** (InMemoryStorage)~~ → Gradle auto-fallback to compile without daemon. Transient, no action needed.
+- ~~**Gradle metaspace warning**~~ → Harmless. Daemon restarts next build. Can increase `org.gradle.jvmargs` in `gradle.properties` if desired.
+
+**If `prebuild --clean` is run**: the signing config in `android/app/build.gradle` and `android/gradle.properties` will be lost. Re-apply the `signingConfigs.release` block and the `HAPPY_RELEASE_*` properties.
 
 ### Node.js Memory (OOM Prevention)
 
