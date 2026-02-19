@@ -399,7 +399,10 @@ export default function FileScreen() {
                     if (response.success && response.content) {
                         let decodedContent: string;
                         try {
-                            decodedContent = atob(response.content);
+                            // Decode base64 to bytes, then UTF-8 decode for proper multibyte char support
+                            const binaryString = atob(response.content);
+                            const bytes = Uint8Array.from(binaryString, c => c.charCodeAt(0));
+                            decodedContent = new TextDecoder('utf-8').decode(bytes);
                         } catch (decodeError) {
                             setFileContent({
                                 content: '',
