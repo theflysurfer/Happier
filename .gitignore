@@ -21,6 +21,10 @@ Thumbs.db
 .env
 .env*.local
 
+# Build credentials (keystores, service accounts)
+*.jks
+credentials.json
+
 # Claude Code local settings
 .claude/settings.local.json
 CLAUDE.local.md
