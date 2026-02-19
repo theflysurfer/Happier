@@ -43,6 +43,19 @@ export default function FilesScreen() {
     // Determine if git is available
     const hasGit = gitStatusFiles !== null;
 
+    // Filter changed files locally when searching on changes tab
+    const filteredChangedFiles = React.useMemo(() => {
+        if (!searchQuery || !gitStatusFiles) return null;
+        const q = searchQuery.toLowerCase();
+        const staged = gitStatusFiles.stagedFiles.filter(f =>
+            f.fileName.toLowerCase().includes(q) || f.fullPath.toLowerCase().includes(q)
+        );
+        const unstaged = gitStatusFiles.unstagedFiles.filter(f =>
+            f.fileName.toLowerCase().includes(q) || f.fullPath.toLowerCase().includes(q)
+        );
+        return { staged, unstaged, total: staged.length + unstaged.length };
+    }, [searchQuery, gitStatusFiles]);
+
     // Auto-select tab based on git status
     React.useEffect(() => {
         if (!isLoading) {
@@ -348,12 +361,108 @@ export default function FilesScreen() {
                     }}>
                         <ActivityIndicator size="small" color={theme.colors.textSecondary} />
                     </View>
+                ) : searchQuery && activeTab === 'changes' ? (
+                    // Filter changed files locally using substring matching
+                    filteredChangedFiles && filteredChangedFiles.total > 0 ? (
+                        <>
+                            {filteredChangedFiles.staged.length > 0 && (
+                                <>
+                                    <View style={{
+                                        backgroundColor: theme.colors.surfaceHigh,
+                                        paddingHorizontal: 16,
+                                        paddingVertical: 12,
+                                        borderBottomWidth: Platform.select({ ios: 0.33, default: 1 }),
+                                        borderBottomColor: theme.colors.divider
+                                    }}>
+                                        <Text style={{
+                                            fontSize: 14,
+                                            fontWeight: '600',
+                                            color: theme.colors.success,
+                                            ...Typography.default()
+                                        }}>
+                                            {t('files.stagedChanges', { count: filteredChangedFiles.staged.length })}
+                                        </Text>
+                                    </View>
+                                    {filteredChangedFiles.staged.map((file, index) => (
+                                        <Item
+                                            key={`staged-${file.fullPath}-${index}`}
+                                            title={file.fileName}
+                                            subtitle={renderFileSubtitle(file)}
+                                            icon={renderFileIcon(file)}
+                                            rightElement={renderStatusIcon(file)}
+                                            onPress={() => handleFilePress(file)}
+                                            showDivider={index < filteredChangedFiles.staged.length - 1 || filteredChangedFiles.unstaged.length > 0}
+                                        />
+                                    ))}
+                                </>
+                            )}
+                            {filteredChangedFiles.unstaged.length > 0 && (
+                                <>
+                                    <View style={{
+                                        backgroundColor: theme.colors.surfaceHigh,
+                                        paddingHorizontal: 16,
+                                        paddingVertical: 12,
+                                        borderBottomWidth: Platform.select({ ios: 0.33, default: 1 }),
+                                        borderBottomColor: theme.colors.divider
+                                    }}>
+                                        <Text style={{
+                                            fontSize: 14,
+                                            fontWeight: '600',
+                                            color: theme.colors.warning,
+                                            ...Typography.default()
+                                        }}>
+                                            {t('files.unstagedChanges', { count: filteredChangedFiles.unstaged.length })}
+                                        </Text>
+                                    </View>
+                                    {filteredChangedFiles.unstaged.map((file, index) => (
+                                        <Item
+                                            key={`unstaged-${file.fullPath}-${index}`}
+                                            title={file.fileName}
+                                            subtitle={renderFileSubtitle(file)}
+                                            icon={renderFileIcon(file)}
+                                            rightElement={renderStatusIcon(file)}
+                                            onPress={() => handleFilePress(file)}
+                                            showDivider={index < filteredChangedFiles.unstaged.length - 1}
+                                        />
+                                    ))}
+                                </>
+                            )}
+                        </>
+                    ) : (
+                        <View style={{
+                            flex: 1,
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            paddingTop: 40,
+                            paddingHorizontal: 20
+                        }}>
+                            <Octicons name="search" size={48} color={theme.colors.textSecondary} />
+                            <Text style={{
+                                fontSize: 16,
+                                color: theme.colors.textSecondary,
+                                textAlign: 'center',
+                                marginTop: 16,
+                                ...Typography.default()
+                            }}>
+                                {t('files.noFilesFound')}
+                            </Text>
+                            <Text style={{
+                                fontSize: 14,
+                                color: theme.colors.textSecondary,
+                                textAlign: 'center',
+                                marginTop: 8,
+                                ...Typography.default()
+                            }}>
+                                {t('files.tryDifferentTerm')}
+                            </Text>
+                        </View>
+                    )
                 ) : searchQuery || activeTab === 'browse' ? (
-                    // Show search results or all files when clean repo
+                    // Show search results or all files when in browse mode
                     isSearching ? (
-                        <View style={{ 
-                            flex: 1, 
-                            justifyContent: 'center', 
+                        <View style={{
+                            flex: 1,
+                            justifyContent: 'center',
                             alignItems: 'center',
                             paddingTop: 40
                         }}>
@@ -369,9 +478,9 @@ export default function FilesScreen() {
                             </Text>
                         </View>
                     ) : searchResults.length === 0 ? (
-                        <View style={{ 
-                            flex: 1, 
-                            justifyContent: 'center', 
+                        <View style={{
+                            flex: 1,
+                            justifyContent: 'center',
                             alignItems: 'center',
                             paddingTop: 40,
                             paddingHorizontal: 20

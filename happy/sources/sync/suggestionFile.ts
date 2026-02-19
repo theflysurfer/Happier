@@ -55,7 +55,7 @@ class FileSearchCache {
                 { name: 'fileName', weight: 0.7 },  // Higher weight for file/directory name
                 { name: 'fullPath', weight: 0.3 }   // Lower weight for full path
             ],
-            threshold: 0.3,
+            threshold: 0.6,
             includeScore: true,
             shouldSort: true,
             minMatchCharLength: 1,
@@ -162,7 +162,7 @@ class FileSearchCache {
             return [];
         }
 
-        const { limit = 10, threshold = 0.3 } = options;
+        const { limit = 10, threshold = 0.6 } = options;
 
         // If query is empty, return most recently modified files
         if (!query || query.trim().length === 0) {
