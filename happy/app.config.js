@@ -55,6 +55,9 @@ export default {
             ],
             edgeToEdgeEnabled: true,
             package: bundleId,
+            autolinking: {
+                excludeModules: ['react-native-audio-api']
+            },
             googleServicesFile: "./google-services.json",
             intentFilters: variant === 'production' ? [
                 {
@@ -78,6 +81,7 @@ export default {
         },
         plugins: [
             require("./plugins/withEinkCompatibility.js"),
+            require("./plugins/withWindowsPathFix.js"),
             [
                 "expo-router",
                 {

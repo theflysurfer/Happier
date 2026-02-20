@@ -1,0 +1,78 @@
+
+// Windows 260-char path limit fix for CMake/ninja builds.
+// Node.js autolinking resolves the C:\h junction to the real ~120 char project path.
+// Ninja encodes absolute source paths into build dirs, exceeding MAX_PATH.
+// Fix: redirect .cxx staging to C:\tmp\cxx AND repoint cmake.path through the
+// short junction path so CMake sees source files at C:\h\... instead of the real path.
+def WIN_REAL_PREFIX = file(rootDir).parentFile.canonicalPath.replace('/', '\\')
+def WIN_SHORT_PREFIX = "C:\\h"
+
+// Redirect ALL subproject buildDir through the junction path.
+// This ensures codegen outputs (referenced by the app's generated CMakeLists.txt)
+// use short paths instead of the real ~120 char path.
+subprojects { project ->
+    def origBuildDir = project.buildDir.absolutePath.replace('/', '\\')
+    if (origBuildDir.startsWith(WIN_REAL_PREFIX)) {
+        project.buildDir = new File(origBuildDir.replace(WIN_REAL_PREFIX, WIN_SHORT_PREFIX))
+    }
+}
+
+subprojects { project ->
+    project.afterEvaluate {
+        if (project.plugins.hasPlugin('com.android.library') || project.plugins.hasPlugin('com.android.application')) {
+            try {
+                def cmakeConfig = project.android.externalNativeBuild?.cmake
+                if (cmakeConfig != null) {
+                    // Redirect .cxx build staging to a short path
+                    cmakeConfig.buildStagingDirectory = new File("C:\\tmp\\cxx\\${project.name}")
+
+                    // Repoint CMakeLists.txt through the short junction path
+                    // so CMAKE_CURRENT_SOURCE_DIR (and all relative source refs) use C:\h\...
+                    def origPath = cmakeConfig.path
+                    if (origPath != null) {
+                        def origAbs = origPath.absolutePath.replace('/', '\\')
+                        if (origAbs.startsWith(WIN_REAL_PREFIX)) {
+                            def shortPath = origAbs.replace(WIN_REAL_PREFIX, WIN_SHORT_PREFIX)
+                            cmakeConfig.path = new File(shortPath)
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                // Library doesn't use CMake - skip
+            }
+            // Replace the real long path with the junction path in any cmake arguments
+            try {
+                def args = project.android.defaultConfig.externalNativeBuild.cmake.arguments
+                def realFwd = WIN_REAL_PREFIX.replace('\\', '/')
+                def shortFwd = WIN_SHORT_PREFIX.replace('\\', '/')
+                for (int i = 0; i < args.size(); i++) {
+                    if (args[i].contains(realFwd) || args[i].contains(WIN_REAL_PREFIX)) {
+                        args[i] = args[i].replace(realFwd, shortFwd).replace(WIN_REAL_PREFIX, WIN_SHORT_PREFIX)
+                    }
+                }
+            } catch (Exception e) {
+                // No CMake config - skip
+            }
+            // Post-process generated Android-autolinking.cmake to use junction paths.
+            // The RN Gradle plugin generates add_subdirectory() calls with real resolved paths
+            // from autolinking.json (Node.js resolves junctions). Replace with short junction paths.
+            def autolinkTask = project.tasks.findByName("generateAutolinkingNewArchitectureFiles")
+            if (autolinkTask != null) {
+                autolinkTask.doLast {
+                    def cmakeFile = new File(project.buildDir, "generated/autolinking/src/main/jni/Android-autolinking.cmake")
+                    if (cmakeFile.exists()) {
+                        def realFwd = WIN_REAL_PREFIX.replace('\\', '/')
+                        def realFwdEsc = realFwd.replace(' ', '\\ ')
+                        def shortFwd = WIN_SHORT_PREFIX.replace('\\', '/')
+                        def content = cmakeFile.text
+                        // Replace escaped-space version first (longer, more specific)
+                        content = content.replace(realFwdEsc, shortFwd)
+                        // Then plain version
+                        content = content.replace(realFwd, shortFwd)
+                        cmakeFile.text = content
+                    }
+                }
+            }
+        }
+    }
+}
