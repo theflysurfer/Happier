@@ -80,7 +80,7 @@ This generates `sources/changelog/changelog.json` which is used by the app.
 - **React Native** with **Expo** SDK 54
 - **TypeScript** with strict mode enabled
 - **Unistyles** for cross-platform styling with themes and breakpoints
-- **Expo Router v5** for file-based routing
+- **Expo Router v6** for file-based routing
 - **Socket.io** for real-time WebSocket communication
 - **tweetnacl** for end-to-end encryption
 
@@ -583,10 +583,10 @@ A resilient testing script is available at `scripts/android-test.sh`:
 
 ### Known Issues
 
-- **Path with spaces/parentheses**: `npx expo run:android` (native build) fails because CMake/ninja cannot handle spaces in the project path (`2026.01 Happy (Claude Code remote)`). Workaround: use `subst I:` virtual drive (see "Deploying Code to Device" section). Also requires `reactNativeDir`/`codegenDir` overrides in `android/app/build.gradle` to avoid codegen "different roots" error.
+- **Path with spaces/parentheses**: The project path has spaces and parentheses which cause CMake/ninja 260-char path limit errors. **Fixed** by the junction `C:\h` + Expo config plugin `withWindowsPathFix.js` (see "Windows 260-char Path Fix" section below).
 - **Stale emulator locks**: If the emulator crashes, `.lock` files remain in `~/.android/avd/happy_test.avd/`. The test script auto-cleans these.
 - **ANR dialogs**: The emulator may show "app isn't responding" dialogs on first boot. The script dismisses them automatically.
-- **Dev client vs release APK**: The installed APK may be a release build without dev-client support. To get live Metro reloading, build with `eas build --profile development --platform android` or `npx expo run:android` (requires path fix).
+- **Dev client vs release APK**: The installed APK may be a release build without dev-client support. To get live Metro reloading, build with `eas build --profile development --platform android` or `npx expo run:android`.
 
 ### OTA Updates (EAS Update)
 
@@ -596,7 +596,7 @@ The app already supports OTA updates via `expo-updates`:
 - **Production**: `yarn ota:production` (uses EAS workflow `ota.yaml`)
 - **Runtime version**: `"18"` (in `app.config.js`)
 - **Channels**: `development`, `preview`, `production` (configured in `eas.json`)
-- **Update URL**: `https://u.expo.dev/4558dd3d-cd5a-47cd-bad9-e591a241cc06`
+- **Update URL**: `https://u.expo.dev/2c5ad154-57fd-417d-b434-ffcd710ea311`
 
 To push code changes to an already-installed APK without rebuilding:
 ```bash
@@ -643,11 +643,9 @@ cmd /c 'mklink /J C:\h "C:\Users\julien\OneDrive\Coding\_Projets de code\2026.01
 
 **Verify**: `ls C:\h\package.json` should exist.
 
-**Why not subst?** Subst creates a virtual drive letter but ninja's `Stat()` resolves the real path, hitting the 260-char limit. Junctions are filesystem-level redirects that ninja follows without resolving.
+**Why not subst?** Subst creates a virtual drive letter but Node.js `require.resolve()`, Python `os.path.realpath()`, and CMake all resolve SUBST back to the real path. Also, Expo autolinking (`useExpoModules()`) fails from SUBST drives entirely. Junctions are filesystem-level NTFS redirects that most tools follow without resolving.
 
-**Legacy subst drive `I:`** may still exist for EAS/expo commands (maps to repo root, not `happy/`). It's optional.
-
-**Codegen "different roots"**: Already fixed in `android/app/build.gradle` with relative `file()` paths for `reactNativeDir` and `codegenDir`.
+**Note**: Even with the junction, Node.js autolinking still resolves junction paths to real paths. The Expo config plugin `withWindowsPathFix.js` handles this (see "Windows 260-char Path Fix" below).
 
 #### Method 1: Local dev build (for development with hot-reload)
 
@@ -671,7 +669,7 @@ cd /c/h && APP_ENV=development npx expo prebuild
 cd /c/h/android && ANDROID_HOME=/c/Dev/android ./gradlew app:assembleRelease
 ```
 
-**Output**: `C:\h\android\app\build\outputs\apk\release\app-release.apk` (167 MB)
+**Output**: `C:\h\android\app\build\outputs\apk\release\app-release.apk` (~234 MB)
 
 **Install on device**:
 ```bash
@@ -747,15 +745,39 @@ EAS_SKIP_AUTO_FINGERPRINT=1 eas update --branch development --platform android -
 
 #### Known Issues (all solved)
 
-- ~~**260-char path limit** (ninja `Stat()`)~~ → Fixed: use junction `C:\h` instead of subst
+- ~~**260-char path limit** (ninja `Stat()`/`mkdir()`)~~ → Fixed: junction `C:\h` + Expo config plugin `withWindowsPathFix.js` (see section below)
+- ~~**libsodium.so "not a regular file"**~~ → Fixed: `patches/@more-tech+react-native-libsodium+1.5.5.patch` copies .so outside OneDrive (NTFS reparse tags confuse Java's `Files.isRegularFile()`)
+- ~~**react-native-audio-api path explosion**~~ → Fixed: excluded from Android autolinking via `react-native.config.js` + `app.config.js` (unused on Android)
 - ~~**`tar: Permission denied`** (EAS)~~ → Fixed: `requireCommit: true` uses `git archive`
 - ~~**Archive too large (375 MB)**~~ → Fixed: 204 MB with `git archive`
 - ~~**`.cxx/` crashes tar**~~ → Fixed: `.cxx/` in `.gitignore` + `.easignore`
 - ~~**Signing mismatch on install**~~ → Fixed: `adb uninstall` then fresh install
 - ~~**Kotlin daemon crash** (InMemoryStorage)~~ → Gradle auto-fallback to compile without daemon. Transient, no action needed.
-- ~~**Gradle metaspace warning**~~ → Harmless. Daemon restarts next build. Can increase `org.gradle.jvmargs` in `gradle.properties` if desired.
 
-**If `prebuild --clean` is run**: the signing config in `android/app/build.gradle` and `android/gradle.properties` will be lost. Re-apply the `signingConfigs.release` block and the `HAPPY_RELEASE_*` properties.
+**If `prebuild --clean` is run**: the signing config in `android/app/build.gradle` and `android/gradle.properties` will be lost. Re-apply the `signingConfigs.release` block and the `HAPPY_RELEASE_*` properties. The Windows path fix is auto-applied by the config plugin.
+
+### Windows 260-char Path Fix (Deep Dive)
+
+The project lives at a ~120-char path. CMake/ninja encode absolute source paths into build directory structures, easily exceeding Windows MAX_PATH (260 chars). This is a multi-layered problem because Node.js autolinking resolves the `C:\h` junction to the real path.
+
+**Architecture of the fix** (all handled by `plugins/withWindowsPathFix.js` config plugin + `plugins/withWindowsPathFix.gradle.txt` Groovy template):
+
+| Layer | Problem | Fix |
+|-------|---------|-----|
+| **Library CMake builds** | `cmake.path` uses real resolved path → `CMAKE_CURRENT_SOURCE_DIR` is long | Override `cmakeConfig.path` in `afterEvaluate` to use junction path |
+| **App module autolinking** | `Android-autolinking.cmake` has `add_subdirectory()` with real paths from `autolinking.json` | `doLast` hook on `generateAutolinkingNewArchitectureFiles` task to find-and-replace paths |
+| **CMake arguments** | `-DPROJECT_BUILD_DIR`, `-DREACT_ANDROID_DIR` use real paths | Replace real prefix with junction prefix in `cmake.arguments` |
+| **Build directories** | `project.buildDir` resolves through junction | Redirect all subproject `buildDir` through junction path |
+| **`.cxx` staging** | Build staging directory paths are long | Redirect to `C:\tmp\cxx\<project>` |
+
+**Additional fixes** (separate from config plugin):
+
+| Fix | File | Description |
+|-----|------|-------------|
+| **libsodium native build** | `patches/@more-tech+react-native-libsodium+1.5.5.patch` | Copies pre-built `.so` to `C:/tmp/ls-lib/` (outside OneDrive, avoids NTFS reparse tag issue). Copies source files to `C:/tmp/ls-src/` for short compilation paths. |
+| **react-native-audio-api** | `react-native.config.js` + `app.config.js` | Excluded from Android autolinking (unused module, CMake build adds path pressure) |
+
+**Key insight**: `subst` drives do NOT work because Node.js, Python, Java, and CMake all resolve SUBST back to real paths. Windows junctions (NTFS) are preserved by most tools BUT Node.js `require.resolve()` still resolves through them. Hence the Gradle-level path rewriting.
 
 ### Bug Workflow (Testing on Device)
 
