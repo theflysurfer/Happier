@@ -11,7 +11,7 @@ import { Purchases, customerInfoToPurchases } from "./purchases";
 import { TodoState } from "../-zen/model/ops";
 import { Profile } from "./profile";
 import { UserProfile, RelationshipUpdatedEvent } from "./friendTypes";
-import { loadSettings, loadLocalSettings, saveLocalSettings, saveSettings, loadPurchases, savePurchases, loadProfile, saveProfile, loadSessionDrafts, saveSessionDrafts, loadSessionPermissionModes, saveSessionPermissionModes } from "./persistence";
+import { loadSettings, loadLocalSettings, saveLocalSettings, saveSettings, loadPurchases, savePurchases, loadProfile, saveProfile, loadSessionDrafts, saveSessionDrafts, loadSessionPermissionModes, saveSessionPermissionModes, loadCachedSessions, saveCachedSessions } from "./persistence";
 import type { PermissionMode } from '@/components/PermissionModeSelector';
 import type { CustomerInfo } from './revenueCat/types';
 import React from "react";
@@ -250,13 +250,37 @@ export const storage = create<StorageState>()((set, get) => {
     let profile = loadProfile();
     let sessionDrafts = loadSessionDrafts();
     let sessionPermissionModes = loadSessionPermissionModes();
+
+    // Load cached sessions for instant display on startup
+    const cachedSessionsRaw = loadCachedSessions();
+    const hasCachedSessions = Object.keys(cachedSessionsRaw).length > 0;
+    let initialDraftsApplied = hasCachedSessions;
+
+    // Hydrate cached sessions with defaults for volatile fields
+    const initialSessions: Record<string, Session> = {};
+    if (hasCachedSessions) {
+        for (const [id, cached] of Object.entries(cachedSessionsRaw)) {
+            initialSessions[id] = {
+                ...cached,
+                agentState: null,
+                presence: cached.active ? "online" : cached.activeAt,
+                draft: sessionDrafts[id] || null,
+                permissionMode: sessionPermissionModes[id] || 'default',
+            };
+        }
+    }
+
+    const initialSessionListViewData = hasCachedSessions
+        ? buildSessionListViewData(initialSessions)
+        : null;
+
     return {
         settings,
         settingsVersion: version,
         localSettings,
         purchases,
         profile,
-        sessions: {},
+        sessions: initialSessions,
         machines: {},
         artifacts: {},  // Initialize artifacts
         friends: {},  // Initialize relationships cache
@@ -270,7 +294,7 @@ export const storage = create<StorageState>()((set, get) => {
         todoState: null,  // Initialize todo state
         todosLoaded: false,  // Initialize todos loaded state
         sessionsData: null,  // Legacy - to be removed
-        sessionListViewData: null,
+        sessionListViewData: initialSessionListViewData,
         sessionMessages: {},
         sessionGitStatus: {},
         realtimeStatus: 'disconnected',
@@ -278,7 +302,7 @@ export const storage = create<StorageState>()((set, get) => {
         socketStatus: 'disconnected',
         socketLastConnectedAt: null,
         socketLastDisconnectedAt: null,
-        isDataReady: false,
+        isDataReady: hasCachedSessions,
         nativeUpdateStatus: null,
         isMutableToolCall: (sessionId: string, callId: string) => {
             const sessionMessages = get().sessionMessages[sessionId];
@@ -300,9 +324,10 @@ export const storage = create<StorageState>()((set, get) => {
             return Object.values(state.sessions).filter(s => s.active);
         },
         applySessions: (sessions: (Omit<Session, 'presence'> & { presence?: "online" | number })[]) => set((state) => {
-            // Load drafts and permission modes if sessions are empty (initial load)
-            const savedDrafts = Object.keys(state.sessions).length === 0 ? sessionDrafts : {};
-            const savedPermissionModes = Object.keys(state.sessions).length === 0 ? sessionPermissionModes : {};
+            // Load drafts and permission modes on first server fetch (not from cache)
+            const savedDrafts = !initialDraftsApplied ? sessionDrafts : {};
+            const savedPermissionModes = !initialDraftsApplied ? sessionPermissionModes : {};
+            initialDraftsApplied = true;
 
             // Merge new sessions with existing ones
             const mergedSessions: Record<string, Session> = { ...state.sessions };
@@ -454,6 +479,9 @@ export const storage = create<StorageState>()((set, get) => {
                 }
             });
             projectManager.updateSessions(Object.values(mergedSessions), machineMetadataMap);
+
+            // Persist sessions to cache for instant startup
+            saveCachedSessions(mergedSessions);
 
             return {
                 ...state,
@@ -934,7 +962,10 @@ export const storage = create<StorageState>()((set, get) => {
             
             // Rebuild sessionListViewData without the deleted session
             const sessionListViewData = buildSessionListViewData(remainingSessions);
-            
+
+            // Persist updated sessions to cache
+            saveCachedSessions(remainingSessions);
+
             return {
                 ...state,
                 sessions: remainingSessions,

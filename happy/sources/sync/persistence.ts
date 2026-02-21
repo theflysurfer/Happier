@@ -4,6 +4,7 @@ import { LocalSettings, localSettingsDefaults, localSettingsParse } from './loca
 import { Purchases, purchasesDefaults, purchasesParse } from './purchases';
 import { Profile, profileDefaults, profileParse } from './profile';
 import type { PermissionMode } from '@/components/PermissionModeSelector';
+import type { Session } from './storageTypes';
 
 const mmkv = new MMKV();
 const NEW_SESSION_DRAFT_KEY = 'new-session-draft-v1';
@@ -221,6 +222,44 @@ export function retrieveTempText(id: string): string | null {
         return content;
     }
     return null;
+}
+
+// Cached session type - strips volatile/separately-persisted fields for compact storage
+export type CachedSession = Omit<Session, 'presence' | 'agentState' | 'draft' | 'permissionMode' | 'modelMode' | 'latestUsage' | 'todos'>;
+
+export function loadCachedSessions(): Record<string, CachedSession> {
+    const cached = mmkv.getString('cached-sessions-v1');
+    if (cached) {
+        try {
+            const parsed = JSON.parse(cached);
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                return parsed;
+            }
+        } catch (e) {
+            console.error('Failed to parse cached sessions', e);
+        }
+    }
+    return {};
+}
+
+export function saveCachedSessions(sessions: Record<string, Session>) {
+    const stripped: Record<string, CachedSession> = {};
+    for (const [id, session] of Object.entries(sessions)) {
+        stripped[id] = {
+            id: session.id,
+            seq: session.seq,
+            createdAt: session.createdAt,
+            updatedAt: session.updatedAt,
+            active: session.active,
+            activeAt: session.activeAt,
+            metadata: session.metadata,
+            metadataVersion: session.metadataVersion,
+            agentStateVersion: session.agentStateVersion,
+            thinking: session.thinking,
+            thinkingAt: session.thinkingAt,
+        };
+    }
+    mmkv.set('cached-sessions-v1', JSON.stringify(stripped));
 }
 
 export function clearPersistence() {
