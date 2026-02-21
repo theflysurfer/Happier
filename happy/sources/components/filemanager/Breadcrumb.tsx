@@ -15,25 +15,31 @@ export const Breadcrumb = React.memo<BreadcrumbProps>(({ path, rootPath, onNavig
     const { theme } = useUnistyles();
 
     const segments = React.useMemo(() => {
+        // Split by both / and \ for cross-platform support
+        const splitPath = (p: string) => p.split(/[/\\]/);
+        const sep = rootPath.includes('\\') ? '\\' : '/';
+
         // Show path relative to root
         let relativePath = path;
         if (path.startsWith(rootPath)) {
             relativePath = path.slice(rootPath.length);
         }
-        if (relativePath.startsWith('/')) {
+        if (relativePath.startsWith('/') || relativePath.startsWith('\\')) {
             relativePath = relativePath.slice(1);
         }
 
-        const parts = relativePath ? relativePath.split('/') : [];
+        const parts = relativePath ? splitPath(relativePath).filter(Boolean) : [];
+        const rootParts = splitPath(rootPath);
+        const rootName = rootParts[rootParts.length - 1] || rootParts[rootParts.length - 2] || '/';
         const result: { name: string; fullPath: string }[] = [
-            { name: rootPath.split('/').pop() || '/', fullPath: rootPath },
+            { name: rootName, fullPath: rootPath },
         ];
 
         let accumulated = rootPath;
         for (const part of parts) {
-            accumulated = accumulated.endsWith('/')
+            accumulated = accumulated.endsWith('/') || accumulated.endsWith('\\')
                 ? `${accumulated}${part}`
-                : `${accumulated}/${part}`;
+                : `${accumulated}${sep}${part}`;
             result.push({ name: part, fullPath: accumulated });
         }
 
