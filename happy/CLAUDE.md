@@ -756,8 +756,10 @@ yarn ota
 # Production channel (via EAS Workflow)
 yarn ota:production
 
-# Manual push to development branch (Android only, no iPhone)
-EAS_SKIP_AUTO_FINGERPRINT=1 eas update --branch development --platform android --message "description" --non-interactive
+# Manual push to production branch (Android only, no iPhone)
+# CRITICAL: app.config.js hardcodes channel to "production" regardless of APP_ENV
+# So ALL OTA updates must go to the "production" branch
+EAS_SKIP_AUTO_FINGERPRINT=1 eas update --branch production --platform android --message "description" --non-interactive
 ```
 
 **IMPORTANT**: Always use `--platform android` — there is no iPhone to target. This skips the iOS bundle and speeds up the push.
@@ -765,7 +767,7 @@ EAS_SKIP_AUTO_FINGERPRINT=1 eas update --branch development --platform android -
 **Requirements for OTA to work:**
 - The APK must include `expo-updates` (all builds do)
 - Runtime version must match (`"18"` currently). Bump it when native code changes.
-- Channel must match: dev APK → `development` channel, preview → `preview`, etc.
+- **CRITICAL: Channel is ALWAYS `production`** — `app.config.js` line 159 hardcodes `"expo-channel-name": "production"` regardless of `APP_ENV`. ALL OTA updates must target `--branch production`. Using `--branch development` will NOT be picked up by any APK.
 - `app.config.js` sets the channel via `updates.requestHeaders["expo-channel-name"]`
 
 #### Quick Reference
@@ -775,7 +777,7 @@ EAS_SKIP_AUTO_FINGERPRINT=1 eas update --branch development --platform android -
 | Dev build + Metro | `cd /c/h && ANDROID_HOME=/c/Dev/android APP_ENV=development npx expo run:android` |
 | Release APK (local) | `cd /c/Dev/happy-v6/android && ANDROID_HOME=/c/Dev/android ./gradlew app:assembleRelease --no-watch-fs` |
 | Cloud build (EAS) | `cd /c/h && eas build --platform android --profile development --non-interactive` |
-| OTA update (dev) | `EAS_SKIP_AUTO_FINGERPRINT=1 eas update --branch development --platform android --message "..." --non-interactive` |
+| OTA update (any APK) | `EAS_SKIP_AUTO_FINGERPRINT=1 eas update --branch production --platform android --message "..." --non-interactive` |
 | OTA update (preview) | `yarn ota` |
 | Install APK on device | `adb install -r C:\h\android\app\build\outputs\apk\release\app-release.apk` |
 | Uninstall + reinstall | `adb uninstall com.slopus.happy.dev && adb install <apk>` |
@@ -946,7 +948,7 @@ When testing features on the S22 and finding bugs, follow this workflow for **ea
 2. **Fix the code**
 3. **Typecheck**: `NODE_OPTIONS="--max-old-space-size=8192" ./node_modules/.bin/tsc --noEmit` (0 errors excluding spec files)
 4. **Commit**: Reference the issue number (`Closes #N`)
-5. **OTA push**: `EAS_SKIP_AUTO_FINGERPRINT=1 eas update --branch development --platform android --message "fix: ... (#N)" --non-interactive`
+5. **OTA push**: `EAS_SKIP_AUTO_FINGERPRINT=1 eas update --branch production --platform android --message "fix: ... (#N)" --non-interactive`
 6. **Verify on device**: Force-close the app, reopen, check the fix
 
 **Git tree must be clean** before OTA push (`requireCommit: true`). Commit all changes first.
