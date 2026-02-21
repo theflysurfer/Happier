@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { View, ScrollView, Pressable, Platform } from 'react-native';
+import { View, Pressable, Platform } from 'react-native';
 import { Text } from '@/components/StyledText';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '@/constants/Typography';
@@ -40,21 +40,9 @@ export const Breadcrumb = React.memo<BreadcrumbProps>(({ path, rootPath, onNavig
         return result;
     }, [path, rootPath]);
 
-    const scrollRef = React.useRef<ScrollView>(null);
-
-    React.useEffect(() => {
-        // Scroll to end when path changes
-        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
-    }, [path]);
-
     return (
         <View style={[styles.container, { borderBottomColor: theme.colors.divider }]}>
-            <ScrollView
-                ref={scrollRef}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.content}
-            >
+            <View style={styles.content}>
                 {segments.map((segment, index) => {
                     const isLast = index === segments.length - 1;
                     return (
@@ -76,7 +64,6 @@ export const Breadcrumb = React.memo<BreadcrumbProps>(({ path, rootPath, onNavig
                                                 : theme.colors.textLink,
                                         },
                                     ]}
-                                    numberOfLines={1}
                                 >
                                     {segment.name}
                                 </Text>
@@ -92,7 +79,7 @@ export const Breadcrumb = React.memo<BreadcrumbProps>(({ path, rootPath, onNavig
                         </React.Fragment>
                     );
                 })}
-            </ScrollView>
+            </View>
         </View>
     );
 });
@@ -104,6 +91,7 @@ const styles = StyleSheet.create((theme) => ({
     },
     content: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
         alignItems: 'center',
         paddingHorizontal: 16,
         paddingVertical: 10,
