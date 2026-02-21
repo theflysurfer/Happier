@@ -536,6 +536,13 @@ Master Secret (32 bytes)
 
 ## Android Testing
 
+### MCP Mobile Testing Rules
+
+- **ALWAYS use the MCP mobile tool** (`mcp__mobile__mobile`) for all device interaction — NEVER use ADB directly via Bash
+- **At session start**: Call `keep_awake(enabled=true, mode="screen_on")` to prevent screen timeout during testing. If it times out, retry or use `shell("settings put global stay_on_while_plugged_in 2")` as fallback
+- **ADB timeouts**: The MCP mobile tool can intermittently timeout (ETIMEDOUT). Simply retry the command — screenshots usually work even when shell commands timeout
+- **Lock screen**: If the phone locks (keyguard), send `shell("input keyevent 82")` to bring up PIN entry. The PIN must be entered manually by the user
+
 ### Testing Helper Script
 
 A resilient testing script is available at `scripts/android-test.sh`:
@@ -747,7 +754,9 @@ cd /c/h && eas build --platform android --profile development --non-interactive
 
 #### OTA Updates (JS-only changes, no rebuild needed)
 
-Push JS bundle updates to already-installed APKs. Works regardless of how the APK was built.
+Push JS bundle updates to already-installed APKs.
+
+**WARNING: OTA compatibility** — The JS bundle pushed via OTA should ideally come from the same codebase used to build the APK. If the APK was built on VPS (slopus/happy monorepo), push OTAs from the VPS too. Pushing from the local fork (theflysurfer/happy) may work if the code is identical, but native module mismatches can cause blank screens. Use `eas update:roll-back-to-embedded` to recover if an OTA breaks the app.
 
 ```bash
 # Preview channel (runs typecheck + changelog parse + push)
@@ -781,6 +790,7 @@ EAS_SKIP_AUTO_FINGERPRINT=1 eas update --branch production --platform android --
 | OTA update (preview) | `yarn ota` |
 | Install APK on device | `adb install -r C:\h\android\app\build\outputs\apk\release\app-release.apk` |
 | Uninstall + reinstall | `adb uninstall com.slopus.happy.dev && adb install <apk>` |
+| OTA rollback (recovery) | `EAS_SKIP_AUTO_FINGERPRINT=1 eas update:roll-back-to-embedded --branch production --platform android --runtime-version 18 --message "rollback" --non-interactive` |
 | Create junction (once) | `cmd /c 'mklink /J C:\h "<full-path>\happy"'` |
 
 ### VPS Build (Hostinger - Linux, recommended)
