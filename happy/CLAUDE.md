@@ -630,61 +630,99 @@ yarn ota:production
 - **Android SDK** at `C:\Dev\android` (`ANDROID_HOME`)
 - **Java 17+** installed
 - **Device connected** via USB or WiFi: `adb devices` should show it
-- **Junction `C:\h`** must exist (see Step 0)
 
-#### Step 0: Create junction (one-time)
+#### CRITICAL: Build from a clean-path copy (no spaces/parentheses)
 
-The real project path has spaces and parentheses which break CMake/ninja (260-char path limit). A **Windows junction** is required — `subst` drives are NOT sufficient because ninja resolves through them to the real path.
+The real project path (`C:\Users\julien\OneDrive\Coding\_Projets de code\2026.01 Happy (Claude Code remote)\happy`) has spaces and parentheses which break CMake/ninja. **Junctions do NOT work** because `node_modules` paths still resolve to the real OneDrive path through `require.resolve()`.
 
-```powershell
-# In PowerShell (admin not required for junctions to own dirs)
-cmd /c 'mklink /J C:\h "C:\Users\julien\OneDrive\Coding\_Projets de code\2026.01 Happy (Claude Code remote)\happy"'
-```
+**The only working method**: Copy the project to a path without spaces, install deps there, and build.
 
-**Verify**: `ls C:\h\package.json` should exist.
-
-**Why not subst?** Subst creates a virtual drive letter but Node.js `require.resolve()`, Python `os.path.realpath()`, and CMake all resolve SUBST back to the real path. Also, Expo autolinking (`useExpoModules()`) fails from SUBST drives entirely. Junctions are filesystem-level NTFS redirects that most tools follow without resolving.
-
-**Note**: Even with the junction, Node.js autolinking still resolves junction paths to real paths. The Expo config plugin `withWindowsPathFix.js` handles this (see "Windows 260-char Path Fix" below).
-
-#### Method 1: Local dev build (for development with hot-reload)
-
-Builds debug APK locally, installs via ADB, starts Metro for hot-reload.
+**Build directory**: `C:\Dev\happy-v6` (current working copy)
 
 ```bash
-cd /c/h && ANDROID_HOME=/c/Dev/android APP_ENV=development npx expo run:android
+PROJ="C:\Users\julien\OneDrive\Coding\_Projets de code\2026.01 Happy (Claude Code remote)\happy"
+
+# 1. Copy project (excluding heavy dirs) - use PowerShell for robocopy
+# NOTE: robocopy exit code 1 = files copied successfully (bash treats non-zero as error, this is NORMAL)
+powershell -Command "robocopy '$PROJ' 'C:\Dev\happy-v6' /E /XD node_modules android ios .expo screenshots .git /XF build_log.txt tsconfig.tsbuildinfo /NFL /NDL /NJH /NJS /nc /ns /np"
+
+# 2. .env.local is copied by robocopy (CRITICAL - contains EXPO_PUBLIC_HARDCODED_SECRET)
+
+# 3. CRITICAL: Update C:\h junction to point to BUILD dir (not OneDrive source!)
+# The withWindowsPathFix.gradle plugin rewrites paths from the real build dir to C:\h.
+# If C:\h points to OneDrive instead of C:\Dev\happy-v6, CMake will look for node_modules
+# in the OneDrive path where they don't exist → BUILD FAILURE.
+cmd /c "rmdir C:\h" && cmd /c "mklink /J C:\h C:\Dev\happy-v6"
+
+# 4. Clean old node_modules if they exist
+# IMPORTANT: Use PowerShell Remove-Item, NOT bash rm -rf (PowerShell is 10x faster on Windows)
+powershell -Command "Remove-Item -Recurse -Force 'C:\Dev\happy-v6\node_modules' -ErrorAction SilentlyContinue"
+
+# 5. Install dependencies
+# EXPECTED ERRORS to ignore:
+#   - setup-skia-web: "n'est pas reconnu" → web-only tool, irrelevant for Android
+#   - patch-package @more-tech/react-native-libsodium: 5.7MB binary patch often fails → apply manually (see step 6)
+cd /c/Dev/happy-v6 && yarn install
+
+# 6. Apply libsodium patch MANUALLY (3 text file changes - see "Fix: libsodium manual patch" section below)
+
+# 7. Prebuild android/
+cd /c/Dev/happy-v6 && ANDROID_HOME=/c/Dev/android APP_ENV=development npx expo prebuild --platform android --clean
+
+# 8. CRITICAL: Fix gradle.properties after prebuild (prebuild resets these to defaults!)
+# - Increase JVM heap from 2048m to 4096m (avoids daemon crash after ~40 min)
+# - Restrict ABIs to arm64-v8a only (S22 architecture, avoids building 4 unnecessary ABIs)
+# Edit C:\Dev\happy-v6\android\gradle.properties:
+#   org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=512m
+#   reactNativeArchitectures=arm64-v8a
+
+# 9. Build RELEASE APK (NEVER debug - debug needs Metro!)
+# --no-watch-fs avoids native crash in gradle-fileevents.dll on Windows
+cd /c/Dev/happy-v6/android && ANDROID_HOME=/c/Dev/android APP_ENV=development ./gradlew app:assembleRelease --no-watch-fs
+
+# 10. Install on device
+adb uninstall com.slopus.happy.dev 2>/dev/null; adb install /c/Dev/happy-v6/android/app/build/outputs/apk/release/app-release.apk
 ```
 
-To target a specific device: `npx expo run:android -d` (lists connected devices).
+**Output**: `C:\Dev\happy-v6\android\app\build\outputs\apk\release\app-release.apk` (~96 MB)
+**Build time**: ~20-25 min with arm64-v8a only (was 40+ min with 4 ABIs, crashed with JVM EXCEPTION_ACCESS_VIOLATION)
 
-#### Method 2: Local release APK (PREFERRED for personal APK)
+#### CRITICAL: Always build RELEASE, never DEBUG
 
-Signed release APK with hardcoded secret key. No Metro needed. Self-contained.
+- `assembleRelease` = JS bundle embedded, standalone, auto-login works, NO Metro needed
+- `assembleDebug` = needs Metro running, shows Expo dev launcher, USELESS for personal APK
+
+#### Fix: libsodium manual patch (3 text files)
+
+The `patches/@more-tech+react-native-libsodium+1.5.5.patch` file is 5.7MB (contains binary .so diffs) and **often fails to apply** with `patch-package`, even on fresh `node_modules`. The fix is to apply the 3 text changes manually after `yarn install`:
+
+**Why**: The patch renames the JNI library from `libsodium` to `libsodiumjni` (avoids name collision with the prebuilt `libsodium.so`), copies sources to short paths, and copies the prebuilt `.so` outside OneDrive.
+
+**File 1**: `node_modules/@more-tech/react-native-libsodium/android/CMakeLists.txt`
+Replace the entire file with the patched version that:
+- Adds `project(libsodium)` after cmake_minimum_required
+- Converts backslashes with `file(TO_CMAKE_PATH ...)`
+- Copies prebuilt `.so` to `C:/tmp/ls-lib/` (avoids OneDrive NTFS reparse tags)
+- Copies source files to `C:/tmp/ls-src/` (avoids 260-char path limit)
+- Renames library target from `libsodium` to `libsodiumjni`
+
+**File 2**: `node_modules/@more-tech/react-native-libsodium/android/build.gradle`
+Add `buildStagingDirectory file("C:\\tmp\\cxx-ls")` inside `externalNativeBuild { cmake { ... } }`
+
+**File 3**: `node_modules/@more-tech/react-native-libsodium/android/src/main/java/com/libsodium/LibsodiumModule.java`
+Change `System.loadLibrary("libsodium")` → `System.loadLibrary("libsodiumjni")`
+
+**The prebuilt `.so` files are already included in the npm package** under `libsodium/build/` — no manual CMake/ninja compilation needed. The CMakeLists.txt copies them to `C:/tmp/ls-lib/` at build time.
+
+#### Install on device
 
 ```bash
-# Prebuild if android/ doesn't exist
-cd /c/h && APP_ENV=development npx expo prebuild
-
-# Build signed release APK
-cd /c/h/android && ANDROID_HOME=/c/Dev/android ./gradlew app:assembleRelease
-```
-
-**Output**: `C:\h\android\app\build\outputs\apk\release\app-release.apk` (~234 MB)
-
-**Install on device**:
-```bash
-# If same signing key as existing install:
-adb install -r C:\h\android\app\build\outputs\apk\release\app-release.apk
-
-# If different signing key (e.g. switching from EAS build to local):
+# Uninstall old (required when switching signing keys)
 adb uninstall com.slopus.happy.dev
-adb install C:\h\android\app\build\outputs\apk\release\app-release.apk
-```
 
-**Signing config** (already set up in `android/app/build.gradle` + `android/gradle.properties`):
-- Keystore: `happy.jks` at repo root (path: `../../../happy.jks` from `android/app/`)
-- Key alias: `happy-key`
-- Passwords in `android/gradle.properties` (`HAPPY_RELEASE_*` properties)
+# Install new release APK
+adb install C:\Dev\happy-v6\android\app\build\outputs\apk\release\app-release.apk
+```
 
 **Auto-login**: The hardcoded secret is loaded from `.env.local` (`EXPO_PUBLIC_HARDCODED_SECRET`) and auto-authenticates on first launch.
 
@@ -735,7 +773,7 @@ EAS_SKIP_AUTO_FINGERPRINT=1 eas update --branch development --platform android -
 | Task | Command |
 |------|---------|
 | Dev build + Metro | `cd /c/h && ANDROID_HOME=/c/Dev/android APP_ENV=development npx expo run:android` |
-| Release APK (local) | `cd /c/h/android && ANDROID_HOME=/c/Dev/android ./gradlew app:assembleRelease` |
+| Release APK (local) | `cd /c/Dev/happy-v6/android && ANDROID_HOME=/c/Dev/android ./gradlew app:assembleRelease --no-watch-fs` |
 | Cloud build (EAS) | `cd /c/h && eas build --platform android --profile development --non-interactive` |
 | OTA update (dev) | `EAS_SKIP_AUTO_FINGERPRINT=1 eas update --branch development --platform android --message "..." --non-interactive` |
 | OTA update (preview) | `yarn ota` |
@@ -743,10 +781,115 @@ EAS_SKIP_AUTO_FINGERPRINT=1 eas update --branch development --platform android -
 | Uninstall + reinstall | `adb uninstall com.slopus.happy.dev && adb install <apk>` |
 | Create junction (once) | `cmd /c 'mklink /J C:\h "<full-path>\happy"'` |
 
+### VPS Build (Hostinger - Linux, recommended)
+
+Building on the VPS is **dramatically simpler** than Windows. No 260-char path workarounds, no junctions, no libsodium manual patch, no file watcher crash, no OneDrive interference.
+
+**VPS**: `automation@69.62.108.82` (Ubuntu 24.04, 15 GB RAM)
+
+#### Prerequisites (already installed)
+
+- Java 17: `openjdk-17-jdk-headless`
+- Android SDK: `~/android-sdk` (platforms;android-35, android-36, build-tools;35.0.0, 36.0.0, NDK 27.1.12297006, cmake;3.22.1)
+- Node.js 20 + Yarn
+- Git SSH access to `slopus/happy`
+
+#### CRITICAL: Upstream is a monorepo
+
+The `slopus/happy` repo is a **monorepo with workspaces**:
+```
+~/happy/
+├── packages/
+│   ├── happy-app/     ← THE APP (has app.config.js, react-native)
+│   ├── happy-agent/
+│   ├── happy-cli/
+│   ├── happy-server/
+│   └── happy-wire/
+├── package.json       ← workspace root (nohoist: react-native)
+└── node_modules/      ← shared deps (BUT react-native is in happy-app/node_modules/)
+```
+
+**You MUST run prebuild and build from `packages/happy-app/`**, NOT from the monorepo root. `react-native` is installed in `packages/happy-app/node_modules/` due to the nohoist config. Running from root causes `Cannot find module 'react-native/package.json'`.
+
+#### Build Steps
+
+```bash
+ssh automation@69.62.108.82
+
+# 1. Pull latest code
+cd ~/happy && git pull
+
+# 2. Install dependencies (from monorepo root)
+cd ~/happy && yarn install
+# NOTE: No libsodium patch issues on Linux! patch-package works perfectly.
+
+# 3. Copy .env.local to the app workspace (if not already there)
+cp ~/happy/.env.local ~/happy/packages/happy-app/.env.local
+
+# 4. Prebuild from the APP workspace (NOT from root!)
+cd ~/happy/packages/happy-app
+ANDROID_HOME=$HOME/android-sdk APP_ENV=development npx expo prebuild --platform android --no-install
+
+# 5. Fix gradle.properties (prebuild resets to defaults)
+cd ~/happy/packages/happy-app/android
+sed -i 's/org.gradle.jvmargs=-Xmx2048m/org.gradle.jvmargs=-Xmx4096m/' gradle.properties
+sed -i 's/-XX:MaxMetaspaceSize=512m/-XX:MaxMetaspaceSize=1024m/' gradle.properties
+sed -i 's/reactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64/reactNativeArchitectures=arm64-v8a/' gradle.properties
+
+# 6. Build release APK (skip lint - causes Metaspace OOM)
+cd ~/happy/packages/happy-app/android
+ANDROID_HOME=$HOME/android-sdk APP_ENV=development \
+  ./gradlew app:assembleRelease \
+  -x lintVitalAnalyzeRelease -x lintVitalReportRelease -x lintVitalRelease
+
+# Output: ~/happy/packages/happy-app/android/app/build/outputs/apk/release/app-release.apk (~103 MB)
+# First build: ~20 min | Subsequent (cached): <1 min
+```
+
+#### Transfer to PC + install on S22
+
+```bash
+# From Windows PC:
+scp automation@69.62.108.82:~/happy/packages/happy-app/android/app/build/outputs/apk/release/app-release.apk /c/tmp/app-release-vps.apk
+
+# Install on S22 (connect USB first):
+adb uninstall com.slopus.happy.dev 2>/dev/null
+adb install /c/tmp/app-release-vps.apk
+```
+
+#### VPS Build Traps
+
+1. **Run from `packages/happy-app/`, NOT from root**: The `settings.gradle` resolves `react-native` via Node require from `rootDir` (the `android/` parent). If `android/` is at root level, Node can't find react-native (it's in `packages/happy-app/node_modules/` due to nohoist).
+
+2. **MaxMetaspaceSize must be 1024m** (not 512m): The lint analyzer runs out of Metaspace at 512m with error `OutOfMemoryError: Metaspace` on `lintVitalAnalyzeRelease`. Set `-XX:MaxMetaspaceSize=1024m` in gradle.properties.
+
+3. **Skip ALL lint tasks**: Even with 1024m Metaspace, lint tasks can still fail. The `-x lintVitalAnalyzeRelease -x lintVitalReportRelease -x lintVitalRelease` flags skip lint entirely. Safe for personal dev APK.
+
+4. **`--no-install` on prebuild**: On headless Linux, `npx expo prebuild` without `--no-install` asks interactive questions. Always use `--no-install`.
+
+5. **Disk space**: Android SDK + node_modules + build artifacts need ~20 GB. Check `df -h` before building. Docker cleanup: `docker image prune -a --filter "until=720h"` recovers ~10-15 GB.
+
+6. **No `--no-watch-fs` needed**: Unlike Windows, the Gradle file watcher works fine on Linux. No need for the `--no-watch-fs` flag.
+
+7. **No libsodium manual patch needed**: On Linux, `patch-package` applies the libsodium patch correctly, including the binary `.so` diffs. No manual 3-file edit required.
+
+#### VPS vs Windows Build Comparison
+
+| Aspect | Windows local | VPS Hostinger |
+|--------|--------------|---------------|
+| Build time (first) | 25-40 min (crashes) | ~20 min (stable) |
+| Build time (cached) | 5-10 min | <1 min |
+| Setup complexity | 8 traps, 10 steps | 6 steps, 3 traps |
+| Path workarounds | Junction C:\h + Gradle plugin | None needed |
+| libsodium patch | Manual 3-file edit | patch-package works |
+| File watcher | `--no-watch-fs` required | Works natively |
+| OneDrive interference | NTFS reparse tags break .so | N/A |
+| Gradle MetaspaceSize | 512m OK | 1024m required |
+
 #### Known Issues (all solved)
 
 - ~~**260-char path limit** (ninja `Stat()`/`mkdir()`)~~ → Fixed: junction `C:\h` + Expo config plugin `withWindowsPathFix.js` (see section below)
-- ~~**libsodium.so "not a regular file"**~~ → Fixed: `patches/@more-tech+react-native-libsodium+1.5.5.patch` copies .so outside OneDrive (NTFS reparse tags confuse Java's `Files.isRegularFile()`)
+- ~~**libsodium.so "not a regular file"**~~ → Fixed: manual patch copies .so outside OneDrive (NTFS reparse tags confuse Java's `Files.isRegularFile()`)
 - ~~**react-native-audio-api path explosion**~~ → Fixed: excluded from Android autolinking via `react-native.config.js` + `app.config.js` (unused on Android)
 - ~~**`tar: Permission denied`** (EAS)~~ → Fixed: `requireCommit: true` uses `git archive`
 - ~~**Archive too large (375 MB)**~~ → Fixed: 204 MB with `git archive`
@@ -754,7 +897,23 @@ EAS_SKIP_AUTO_FINGERPRINT=1 eas update --branch development --platform android -
 - ~~**Signing mismatch on install**~~ → Fixed: `adb uninstall` then fresh install
 - ~~**Kotlin daemon crash** (InMemoryStorage)~~ → Gradle auto-fallback to compile without daemon. Transient, no action needed.
 
-**If `prebuild --clean` is run**: the signing config in `android/app/build.gradle` and `android/gradle.properties` will be lost. Re-apply the `signingConfigs.release` block and the `HAPPY_RELEASE_*` properties. The Windows path fix is auto-applied by the config plugin.
+#### Critical Build Traps (DO NOT SKIP)
+
+1. **Junction `C:\h` MUST point to the build directory** (`C:\Dev\happy-v6`), NOT to the OneDrive source path. The `withWindowsPathFix.gradle` plugin rewrites all paths from the real build dir to `C:\h`. If `C:\h` points elsewhere, CMake will look for `node_modules` in the wrong location and fail silently or with cryptic errors. **Always verify**: `powershell -Command "Get-Item -Force 'C:\h' | Select-Object -ExpandProperty Target"` should show `C:\Dev\happy-v6`.
+
+2. **libsodium 5.7MB patch fails on clean install**: `patch-package` cannot reliably apply the binary patch `@more-tech+react-native-libsodium+1.5.5.patch`. **Always apply the 3 text changes manually** after `yarn install` (see "Fix: libsodium manual patch" section). The `yarn install` error about this patch is expected and non-blocking for the build.
+
+3. **`setup-skia-web` error is harmless**: The postinstall script `npx setup-skia-web public` fails on Windows — it's a web-only tool irrelevant to Android builds. Ignore it.
+
+4. **Use PowerShell to delete `node_modules`**: `rm -rf node_modules` takes 10+ minutes on Windows. `powershell -Command "Remove-Item -Recurse -Force 'path' -ErrorAction SilentlyContinue"` is ~10x faster.
+
+5. **`prebuild --clean` resets signing config**: After running `prebuild --clean`, the release signing in `android/app/build.gradle` reverts to using `signingConfigs.debug` (debug keystore). For a personal sideloaded APK this is fine. For Play Store, you'd need to re-apply `signingConfigs.release` with the `HAPPY_RELEASE_*` properties.
+
+6. **robocopy exit code 1 = success**: In bash, robocopy returns exit code 1 when files were successfully copied. This is NOT an error despite bash treating non-zero as failure.
+
+7. **Gradle daemon crash with 4 ABIs**: Building all 4 ABIs (`armeabi-v7a,arm64-v8a,x86,x86_64`) with `Xmx2048m` causes the Gradle daemon to crash after ~40 min with `EXCEPTION_ACCESS_VIOLATION` in `gradle-fileevents.dll` (file watcher native crash). **Fix**: Set `reactNativeArchitectures=arm64-v8a` in `android/gradle.properties` (the S22 only needs arm64-v8a), increase `org.gradle.jvmargs=-Xmx4096m`, and pass `--no-watch-fs` to Gradle to avoid the file watcher native crash.
+
+8. **After `prebuild --clean`, always edit `gradle.properties`**: The prebuild regenerates `gradle.properties` with default values: `Xmx2048m` and all 4 ABIs. You MUST change these to `Xmx4096m` and `arm64-v8a` before building.
 
 ### Windows 260-char Path Fix (Deep Dive)
 
