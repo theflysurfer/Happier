@@ -4,7 +4,7 @@
  */
 
 import Fuse from 'fuse.js';
-import { sessionRipgrep } from './ops';
+import { sessionRipgrep, sessionBash } from './ops';
 import { storage } from './storage';
 import { AsyncLock } from '@/utils/lock';
 
@@ -92,22 +92,42 @@ class FileSearchCache {
             const session = storage.getState().sessions[sessionId];
             const cwd = session?.metadata?.path;
 
-            // Use ripgrep to get all files in the project
+            // Try ripgrep first, fallback to find via bash
+            let fileOutput = '';
+
             const response = await sessionRipgrep(
                 sessionId,
                 ['--files', '--follow'],
                 cwd
             );
 
-            if (!response.success || !response.stdout) {
-                console.error('FileSearchCache: Failed to fetch files', response.error);
-                console.log(response);
-                return;
+            if (response.success && response.stdout) {
+                fileOutput = response.stdout;
+            } else {
+                // Fallback: use find via sessionBash when ripgrep is unavailable
+                console.log('FileSearchCache: ripgrep failed, falling back to find', response.error);
+                if (cwd) {
+                    const bashResponse = await sessionBash(sessionId, {
+                        command: 'find . -type f -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/__pycache__/*" -not -path "*/.venv/*" | head -5000',
+                        cwd,
+                        timeout: 15000
+                    });
+                    if (bashResponse.success && bashResponse.stdout) {
+                        fileOutput = bashResponse.stdout;
+                    } else {
+                        console.error('FileSearchCache: find fallback also failed', bashResponse.error);
+                        return;
+                    }
+                } else {
+                    console.error('FileSearchCache: No cwd available for session', sessionId);
+                    return;
+                }
             }
 
             // Parse the output into file items
-            const filePaths = response.stdout
+            const filePaths = fileOutput
                 .split('\n')
+                .map(p => p.startsWith('./') ? p.slice(2) : p)
                 .filter(path => path.trim().length > 0);
 
             // Clear existing files
