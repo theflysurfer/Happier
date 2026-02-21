@@ -205,8 +205,8 @@ export default function FileScreen() {
                     </TouchableOpacity>
                 )}
 
-                {/* Annotate button (for markdown files) */}
-                {isMarkdown && !editor.isEditMode && (
+                {/* Annotate button */}
+                {!editor.isEditMode && (
                     <TouchableOpacity
                         onPress={() => router.push(`/session/${sessionId}/annotate?path=${encodedPath}`)}
                     >
