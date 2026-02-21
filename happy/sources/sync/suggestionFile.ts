@@ -5,6 +5,7 @@
 
 import Fuse from 'fuse.js';
 import { sessionRipgrep } from './ops';
+import { storage } from './storage';
 import { AsyncLock } from '@/utils/lock';
 
 export interface FileItem {
@@ -87,11 +88,15 @@ class FileSearchCache {
 
             console.log(`FileSearchCache: Refreshing file cache for session ${sessionId}...`);
 
+            // Get the session's project path for ripgrep cwd
+            const session = storage.getState().sessions[sessionId];
+            const cwd = session?.metadata?.path;
+
             // Use ripgrep to get all files in the project
             const response = await sessionRipgrep(
                 sessionId,
                 ['--files', '--follow'],
-                undefined
+                cwd
             );
 
             if (!response.success || !response.stdout) {
