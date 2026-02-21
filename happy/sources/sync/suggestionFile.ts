@@ -92,9 +92,15 @@ class FileSearchCache {
             const session = storage.getState().sessions[sessionId];
             const cwd = session?.metadata?.path;
 
-            // Try ripgrep first, fallback to find via bash
+            if (!cwd) {
+                console.error('FileSearchCache: No cwd available for session', sessionId);
+                return;
+            }
+
+            // Try multiple strategies to list files, in order of preference
             let fileOutput = '';
 
+            // Strategy 1: ripgrep (fastest, respects .gitignore)
             const response = await sessionRipgrep(
                 sessionId,
                 ['--files', '--follow'],
@@ -103,25 +109,40 @@ class FileSearchCache {
 
             if (response.success && response.stdout) {
                 fileOutput = response.stdout;
-            } else {
-                // Fallback: use find via sessionBash when ripgrep is unavailable
-                console.log('FileSearchCache: ripgrep failed, falling back to find', response.error);
-                if (cwd) {
-                    const bashResponse = await sessionBash(sessionId, {
-                        command: 'find . -type f -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/__pycache__/*" -not -path "*/.venv/*" | head -5000',
-                        cwd,
-                        timeout: 15000
-                    });
-                    if (bashResponse.success && bashResponse.stdout) {
-                        fileOutput = bashResponse.stdout;
-                    } else {
-                        console.error('FileSearchCache: find fallback also failed', bashResponse.error);
-                        return;
-                    }
-                } else {
-                    console.error('FileSearchCache: No cwd available for session', sessionId);
-                    return;
+                console.log('FileSearchCache: Got files via ripgrep');
+            }
+
+            // Strategy 2: git ls-files (cross-platform, works on Windows)
+            if (!fileOutput) {
+                console.log('FileSearchCache: ripgrep failed, trying git ls-files', response.error);
+                const gitResponse = await sessionBash(sessionId, {
+                    command: '(git ls-files && git ls-files --others --exclude-standard) 2>/dev/null',
+                    cwd,
+                    timeout: 15000
+                });
+                if (gitResponse.success && gitResponse.stdout && gitResponse.stdout.trim()) {
+                    fileOutput = gitResponse.stdout;
+                    console.log('FileSearchCache: Got files via git ls-files');
                 }
+            }
+
+            // Strategy 3: find (Unix/bash fallback)
+            if (!fileOutput) {
+                console.log('FileSearchCache: git ls-files failed, trying find');
+                const findResponse = await sessionBash(sessionId, {
+                    command: 'find . -type f -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/__pycache__/*" -not -path "*/.venv/*" 2>/dev/null | head -5000',
+                    cwd,
+                    timeout: 15000
+                });
+                if (findResponse.success && findResponse.stdout && findResponse.stdout.trim()) {
+                    fileOutput = findResponse.stdout;
+                    console.log('FileSearchCache: Got files via find');
+                }
+            }
+
+            if (!fileOutput) {
+                console.error('FileSearchCache: All strategies failed to list files for session', sessionId);
+                return;
             }
 
             // Parse the output into file items
