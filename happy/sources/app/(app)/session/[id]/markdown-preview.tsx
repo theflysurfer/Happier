@@ -62,7 +62,9 @@ export default React.memo(function MarkdownPreviewScreen() {
             try {
                 const response = await sessionReadFile(sessionId!, filePath);
                 if (!cancelled && response.success && response.content) {
-                    const decoded = atob(response.content);
+                    const binaryString = atob(response.content);
+                    const bytes = Uint8Array.from(binaryString, c => c.charCodeAt(0));
+                    const decoded = new TextDecoder('utf-8').decode(bytes);
                     setRawContent(decoded);
                     setPreviewContent(decoded);
                 }

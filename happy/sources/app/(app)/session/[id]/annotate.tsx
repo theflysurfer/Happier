@@ -46,7 +46,9 @@ export default React.memo(function AnnotateScreen() {
                 if (cancelled) return;
 
                 if (response.success && response.content) {
-                    const decoded = atob(response.content);
+                    const binaryString = atob(response.content);
+                    const bytes = Uint8Array.from(binaryString, c => c.charCodeAt(0));
+                    const decoded = new TextDecoder('utf-8').decode(bytes);
                     setMarkdown(decoded);
                 } else {
                     setError(response.error || 'Failed to load file');

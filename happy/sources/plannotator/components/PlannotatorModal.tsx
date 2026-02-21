@@ -9,7 +9,6 @@ import {
   Text,
   TextInput,
   Pressable,
-  SafeAreaView,
   ActivityIndicator,
   Platform,
   useWindowDimensions,
@@ -184,7 +183,7 @@ export const PlannotatorModal: React.FC<PlannotatorModalProps> = ({
       presentationStyle="pageSheet"
       onRequestClose={handleClose}
     >
-      <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.surface }}>
+      <View style={{ flex: 1, backgroundColor: theme.colors.surface, paddingTop: insets.top }}>
         {/* Header */}
         <View
           style={{
@@ -490,7 +489,7 @@ export const PlannotatorModal: React.FC<PlannotatorModalProps> = ({
             </Pressable>
           )}
         </View>
-      </SafeAreaView>
+      </View>
 
       {/* Tag picker modal */}
       <ReviewTagPicker
