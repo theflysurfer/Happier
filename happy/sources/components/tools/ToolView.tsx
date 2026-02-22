@@ -157,7 +157,10 @@ export const ToolView = React.memo<ToolViewProps>((props) => {
     } else if (isToolUseError) {
         statusIcon = <Ionicons name="remove-circle-outline" size={20} color={theme.colors.textSecondary} />;
         hideDefaultError = true;
-        minimal = true;
+        // Never hide ExitPlanMode content - plannotator button must remain visible
+        if (tool.name !== 'ExitPlanMode' && tool.name !== 'exit_plan_mode') {
+            minimal = true;
+        }
     } else {
         switch (tool.state) {
             case 'running':
