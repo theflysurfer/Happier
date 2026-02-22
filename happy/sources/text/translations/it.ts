@@ -405,7 +405,23 @@ export const it: TranslationStructure = {
         deleteSessionWarning: 'Questa azione non può essere annullata. Tutti i messaggi e i dati associati a questa sessione verranno eliminati definitivamente.',
         failedToDeleteSession: 'Impossibile eliminare la sessione',
         sessionDeleted: 'Sessione eliminata con successo',
-        
+        reactivateSession: 'Riattiva sessione',
+        reactivateSessionSubtitle: 'Avvia una nuova sessione nella stessa directory',
+        reactivateSessionConfirm: 'Avviare una nuova sessione nella stessa directory sulla stessa macchina?',
+        failedToReactivateSession: 'Impossibile riattivare la sessione',
+        machineOffline: 'La macchina è offline',
+        exportMarkdown: 'Esporta come Markdown',
+        exportMarkdownSubtitle: 'Esporta la conversazione come file markdown',
+        viewTranscript: 'Visualizza trascrizione',
+        viewTranscriptSubtitle: 'Leggi la conversazione completa della sessione',
+        markdownCopied: 'Markdown copiato negli appunti',
+        markdownExported: 'Markdown esportato con successo',
+        viewProjectSessions: 'Tutte le sessioni di questo progetto',
+        viewProjectSessionsSubtitle: 'Visualizza tutte le conversazioni in questo repository',
+        projectSessions: 'Sessioni del progetto',
+        noProjectSessions: 'Nessuna sessione trovata per questo progetto',
+        projectSessionsCount: ({ count }: { count: number }) => count === 1 ? '1 sessione' : `${count} sessioni`,
+
     },
 
     components: {

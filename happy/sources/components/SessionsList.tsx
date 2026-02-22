@@ -26,9 +26,11 @@ import { useRouter } from 'expo-router';
 import { Item } from './Item';
 import { ItemGroup } from './ItemGroup';
 import { useHappyAction } from '@/hooks/useHappyAction';
-import { sessionDelete } from '@/sync/ops';
+import { sessionDelete, machineSpawnNewSession } from '@/sync/ops';
 import { HappyError } from '@/utils/errors';
 import { Modal } from '@/modal';
+import { useAllMachines } from '@/sync/storage';
+import { isMachineOnline } from '@/utils/machineUtils';
 
 const stylesheet = StyleSheet.create((theme) => ({
     container: {
@@ -185,6 +187,13 @@ const stylesheet = StyleSheet.create((theme) => ({
         justifyContent: 'center',
         backgroundColor: theme.colors.status.error,
     },
+    swipeActionReactivate: {
+        width: 112,
+        height: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#34C759',
+    },
     swipeActionText: {
         marginTop: 4,
         fontSize: 12,
@@ -339,6 +348,8 @@ const SessionItem = React.memo(({ session, selected, isFirst, isLast, isSingle }
     const swipeableRef = React.useRef<Swipeable | null>(null);
     const swipeEnabled = Platform.OS !== 'web';
 
+    const machines = useAllMachines();
+
     const [deletingSession, performDelete] = useHappyAction(async () => {
         const result = await sessionDelete(session.id);
         if (!result.success) {
@@ -361,6 +372,43 @@ const SessionItem = React.memo(({ session, selected, isFirst, isLast, isSingle }
             ]
         );
     }, [performDelete]);
+
+    // Reactivate: spawn new session in same directory on same machine
+    const canReactivate = React.useMemo(() => {
+        if (!session.metadata?.machineId || !session.metadata?.path) return false;
+        const machine = machines.find(m => m.id === session.metadata!.machineId);
+        return machine ? isMachineOnline(machine) : false;
+    }, [session.metadata?.machineId, session.metadata?.path, machines]);
+
+    const [reactivating, performReactivate] = useHappyAction(async () => {
+        if (!session.metadata?.machineId || !session.metadata?.path) {
+            throw new HappyError(t('sessionInfo.failedToReactivateSession'), false);
+        }
+        const result = await machineSpawnNewSession({
+            machineId: session.metadata.machineId,
+            directory: session.metadata.path,
+        });
+        if (result.type === 'success') {
+            navigateToSession(result.sessionId);
+        } else if (result.type === 'error') {
+            throw new HappyError(result.errorMessage, false);
+        }
+    });
+
+    const handleReactivate = React.useCallback(() => {
+        swipeableRef.current?.close();
+        Modal.alert(
+            t('sessionInfo.reactivateSession'),
+            t('sessionInfo.reactivateSessionConfirm'),
+            [
+                { text: t('common.cancel'), style: 'cancel' },
+                {
+                    text: t('sessionInfo.reactivateSession'),
+                    onPress: performReactivate
+                }
+            ]
+        );
+    }, [performReactivate]);
 
     const avatarId = React.useMemo(() => {
         return getSessionAvatarId(session);
@@ -458,13 +506,28 @@ const SessionItem = React.memo(({ session, selected, isFirst, isLast, isSingle }
         </Pressable>
     );
 
+    const renderLeftActions = canReactivate ? () => (
+        <Pressable
+            style={styles.swipeActionReactivate}
+            onPress={handleReactivate}
+            disabled={reactivating}
+        >
+            <Ionicons name="play-outline" size={20} color="#FFFFFF" />
+            <Text style={styles.swipeActionText} numberOfLines={2}>
+                {t('sessionInfo.reactivateSession')}
+            </Text>
+        </Pressable>
+    ) : undefined;
+
     return (
         <View style={containerStyles}>
             <Swipeable
                 ref={swipeableRef}
                 renderRightActions={renderRightActions}
+                renderLeftActions={renderLeftActions}
                 overshootRight={false}
-                enabled={!deletingSession}
+                overshootLeft={false}
+                enabled={!deletingSession && !reactivating}
             >
                 {itemContent}
             </Swipeable>

@@ -116,6 +116,14 @@ export default function RootLayout() {
                 }}
             />
             <Stack.Screen
+                name="session/[id]/transcript"
+                options={{
+                    headerShown: true,
+                    headerTitle: t('sessionInfo.viewTranscript'),
+                    headerBackTitle: t('common.back'),
+                }}
+            />
+            <Stack.Screen
                 name="session/[id]/annotate"
                 options={{
                     headerShown: true,
@@ -303,6 +311,14 @@ export default function RootLayout() {
                 options={{
                     headerShown: true,
                     headerTitle: t('sessionHistory.title'),
+                    headerBackTitle: t('common.back'),
+                }}
+            />
+            <Stack.Screen
+                name="session/project-sessions"
+                options={{
+                    headerShown: true,
+                    headerTitle: t('sessionInfo.projectSessions'),
                     headerBackTitle: t('common.back'),
                 }}
             />

@@ -378,7 +378,23 @@ export const zhHans: TranslationStructure = {
         deleteSessionWarning: '此操作无法撤销。与此会话相关的所有消息和数据将被永久删除。',
         failedToDeleteSession: '删除会话失败',
         sessionDeleted: '会话删除成功',
-        
+        reactivateSession: '重新激活会话',
+        reactivateSessionSubtitle: '在同一目录中启动新会话',
+        reactivateSessionConfirm: '在同一台机器的同一目录中启动新会话？',
+        failedToReactivateSession: '重新激活会话失败',
+        machineOffline: '机器已离线',
+        exportMarkdown: '导出为 Markdown',
+        exportMarkdownSubtitle: '将对话导出为 markdown 文件',
+        viewTranscript: '查看记录',
+        viewTranscriptSubtitle: '阅读完整的会话对话',
+        markdownCopied: 'Markdown 已复制到剪贴板',
+        markdownExported: 'Markdown 导出成功',
+        viewProjectSessions: '此项目的所有会话',
+        viewProjectSessionsSubtitle: '查看此仓库中的所有对话',
+        projectSessions: '项目会话',
+        noProjectSessions: '未找到此项目的会话',
+        projectSessionsCount: ({ count }: { count: number }) => `${count}个会话`,
+
     },
 
     components: {

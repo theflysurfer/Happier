@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { View, Text, Animated } from 'react-native';
+import { View, Text, Animated, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Typography } from '@/constants/Typography';
@@ -7,11 +7,13 @@ import { Item } from '@/components/Item';
 import { ItemGroup } from '@/components/ItemGroup';
 import { ItemList } from '@/components/ItemList';
 import { Avatar } from '@/components/Avatar';
-import { useSession, useIsDataReady } from '@/sync/storage';
+import { useSession, useIsDataReady, useSessionMessages, useAllMachines } from '@/sync/storage';
 import { getSessionName, useSessionStatus, formatOSPlatform, formatPathRelativeToHome, getSessionAvatarId } from '@/utils/sessionUtils';
 import * as Clipboard from 'expo-clipboard';
+import { File as ExpoFile, Paths } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { Modal } from '@/modal';
-import { sessionKill, sessionDelete } from '@/sync/ops';
+import { sessionKill, sessionDelete, machineSpawnNewSession } from '@/sync/ops';
 import { useUnistyles } from 'react-native-unistyles';
 import { layout } from '@/components/layout';
 import { t } from '@/text';
@@ -20,6 +22,10 @@ import { CodeView } from '@/components/CodeView';
 import { Session } from '@/sync/storageTypes';
 import { useHappyAction } from '@/hooks/useHappyAction';
 import { HappyError } from '@/utils/errors';
+import { isMachineOnline } from '@/utils/machineUtils';
+import { useNavigateToSession } from '@/hooks/useNavigateToSession';
+import { formatSessionAsMarkdown } from '@/utils/sessionMarkdown';
+import { sync } from '@/sync/sync';
 
 // Animated status dot component
 function StatusDot({ color, isPulsing, size = 8 }: { color: string; isPulsing?: boolean; size?: number }) {
@@ -66,9 +72,19 @@ function SessionInfoContent({ session }: { session: Session }) {
     const devModeEnabled = __DEV__;
     const sessionName = getSessionName(session);
     const sessionStatus = useSessionStatus(session);
-    
+    const navigateToSession = useNavigateToSession();
+    const machines = useAllMachines();
+    const { messages, isLoaded: messagesLoaded } = useSessionMessages(session.id);
+
     // Check if CLI version is outdated
     const isCliOutdated = session.metadata?.version && !isVersionSupported(session.metadata.version, MINIMUM_CLI_VERSION);
+
+    // Check if the session's machine is online (for reactivation)
+    const sessionMachine = React.useMemo(() => {
+        if (!session.metadata?.machineId) return null;
+        return machines.find(m => m.id === session.metadata!.machineId) ?? null;
+    }, [machines, session.metadata?.machineId]);
+    const machineIsOnline = sessionMachine ? isMachineOnline(sessionMachine) : false;
 
     const handleCopySessionId = useCallback(async () => {
         if (!session) return;
@@ -143,6 +159,66 @@ function SessionInfoContent({ session }: { session: Session }) {
     const formatDate = useCallback((timestamp: number) => {
         return new Date(timestamp).toLocaleString();
     }, []);
+
+    // Reactivate session - spawn new session in same directory on same machine
+    const [reactivating, performReactivate] = useHappyAction(async () => {
+        if (!session.metadata?.machineId || !session.metadata?.path) {
+            throw new HappyError(t('sessionInfo.failedToReactivateSession'), false);
+        }
+        if (!machineIsOnline) {
+            throw new HappyError(t('sessionInfo.machineOffline'), false);
+        }
+        const result = await machineSpawnNewSession({
+            machineId: session.metadata.machineId,
+            directory: session.metadata.path,
+        });
+        if (result.type === 'success') {
+            navigateToSession(result.sessionId);
+        } else if (result.type === 'error') {
+            throw new HappyError(result.errorMessage, false);
+        }
+    });
+
+    const handleReactivateSession = useCallback(() => {
+        Modal.alert(
+            t('sessionInfo.reactivateSession'),
+            t('sessionInfo.reactivateSessionConfirm'),
+            [
+                { text: t('common.cancel'), style: 'cancel' },
+                {
+                    text: t('sessionInfo.reactivateSession'),
+                    onPress: performReactivate
+                }
+            ]
+        );
+    }, [performReactivate]);
+
+    // Export session as markdown
+    const [exporting, performExport] = useHappyAction(async () => {
+        // Ensure messages are loaded
+        if (!messagesLoaded) {
+            sync.onSessionVisible(session.id);
+            // Wait briefly for messages to load
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+
+        const currentMessages = messages;
+        const markdown = formatSessionAsMarkdown(session, currentMessages);
+        const fileName = `session-${sessionName.replace(/[^a-zA-Z0-9]/g, '-').substring(0, 50)}.md`;
+
+        if (Platform.OS === 'web') {
+            await Clipboard.setStringAsync(markdown);
+            Modal.alert(t('common.success'), t('sessionInfo.markdownCopied'));
+        } else {
+            const file = new ExpoFile(Paths.cache, fileName);
+            file.write(markdown);
+            const fileUri = file.uri;
+            await Sharing.shareAsync(fileUri, {
+                mimeType: 'text/markdown',
+                dialogTitle: t('sessionInfo.exportMarkdown'),
+            });
+        }
+    });
 
     const handleCopyUpdateCommand = useCallback(async () => {
         const updateCommand = 'npm install -g happy-coder@latest';
@@ -249,12 +325,46 @@ function SessionInfoContent({ session }: { session: Session }) {
 
                 {/* Quick Actions */}
                 <ItemGroup title={t('sessionInfo.quickActions')}>
+                    {session.metadata?.machineId && session.metadata?.path && (
+                        <Item
+                            title={t('sessionInfo.viewProjectSessions')}
+                            subtitle={t('sessionInfo.viewProjectSessionsSubtitle')}
+                            icon={<Ionicons name="layers-outline" size={29} color="#007AFF" />}
+                            onPress={() => router.push({
+                                pathname: '/session/project-sessions' as any,
+                                params: {
+                                    machineId: session.metadata!.machineId!,
+                                    path: session.metadata!.path,
+                                }
+                            })}
+                        />
+                    )}
                     {session.metadata?.machineId && (
                         <Item
                             title={t('sessionInfo.viewMachine')}
                             subtitle={t('sessionInfo.viewMachineSubtitle')}
                             icon={<Ionicons name="server-outline" size={29} color="#007AFF" />}
                             onPress={() => router.push(`/machine/${session.metadata?.machineId}`)}
+                        />
+                    )}
+                    <Item
+                        title={t('sessionInfo.viewTranscript')}
+                        subtitle={t('sessionInfo.viewTranscriptSubtitle')}
+                        icon={<Ionicons name="reader-outline" size={29} color="#007AFF" />}
+                        onPress={() => router.push(`/session/${session.id}/transcript`)}
+                    />
+                    <Item
+                        title={t('sessionInfo.exportMarkdown')}
+                        subtitle={t('sessionInfo.exportMarkdownSubtitle')}
+                        icon={<Ionicons name="document-text-outline" size={29} color="#007AFF" />}
+                        onPress={performExport}
+                    />
+                    {!sessionStatus.isConnected && session.metadata?.machineId && session.metadata?.path && (
+                        <Item
+                            title={t('sessionInfo.reactivateSession')}
+                            subtitle={machineIsOnline ? t('sessionInfo.reactivateSessionSubtitle') : t('sessionInfo.machineOffline')}
+                            icon={<Ionicons name="play-outline" size={29} color={machineIsOnline ? "#34C759" : "#8E8E93"} />}
+                            onPress={machineIsOnline ? handleReactivateSession : undefined}
                         />
                     )}
                     {sessionStatus.isConnected && (

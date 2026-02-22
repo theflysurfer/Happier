@@ -376,7 +376,23 @@ export const ca: TranslationStructure = {
         deleteSessionWarning: 'Aquesta acció no es pot desfer. Tots els missatges i dades associats amb aquesta sessió s\'eliminaran permanentment.',
         failedToDeleteSession: 'Error en eliminar la sessió',
         sessionDeleted: 'Sessió eliminada amb èxit',
-        
+        reactivateSession: 'Reactivar sessió',
+        reactivateSessionSubtitle: 'Iniciar una nova sessió al mateix directori',
+        reactivateSessionConfirm: 'Iniciar una nova sessió al mateix directori a la mateixa màquina?',
+        failedToReactivateSession: 'No s\'ha pogut reactivar la sessió',
+        machineOffline: 'La màquina està desconnectada',
+        exportMarkdown: 'Exportar com a Markdown',
+        exportMarkdownSubtitle: 'Exportar la conversa com a fitxer markdown',
+        viewTranscript: 'Veure transcripció',
+        viewTranscriptSubtitle: 'Llegir la conversa completa de la sessió',
+        markdownCopied: 'Markdown copiat al porta-retalls',
+        markdownExported: 'Markdown exportat correctament',
+        viewProjectSessions: 'Totes les sessions d\'aquest projecte',
+        viewProjectSessionsSubtitle: 'Veure totes les converses d\'aquest repositori',
+        projectSessions: 'Sessions del projecte',
+        noProjectSessions: 'No s\'han trobat sessions per a aquest projecte',
+        projectSessionsCount: ({ count }: { count: number }) => count === 1 ? '1 sessió' : `${count} sessions`,
+
     },
 
     components: {
