@@ -403,6 +403,7 @@ export const pl: TranslationStructure = {
         projectSessions: 'Sesje projektu',
         noProjectSessions: 'Nie znaleziono sesji dla tego projektu',
         projectSessionsCount: ({ count }: { count: number }) => count === 1 ? '1 sesja' : `${count} sesji`,
+        noMessages: 'Brak wiadomości w tej sesji',
     },
 
     components: {

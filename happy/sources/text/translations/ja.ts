@@ -424,6 +424,7 @@ export const ja: TranslationStructure = {
         projectSessions: 'プロジェクトセッション',
         noProjectSessions: 'このプロジェクトのセッションが見つかりません',
         projectSessionsCount: ({ count }: { count: number }) => `${count}セッション`,
+        noMessages: 'このセッションにはメッセージがありません',
 
     },
 

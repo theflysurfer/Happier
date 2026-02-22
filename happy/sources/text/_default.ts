@@ -391,6 +391,7 @@ export const en = {
         projectSessions: 'Project Sessions',
         noProjectSessions: 'No sessions found for this project',
         projectSessionsCount: ({ count }: { count: number }) => count === 1 ? '1 session' : `${count} sessions`,
+        noMessages: 'No messages in this session',
 
     },
 

@@ -366,6 +366,7 @@ export const ru: TranslationStructure = {
         projectSessions: 'Сессии проекта',
         noProjectSessions: 'Сессии для этого проекта не найдены',
         projectSessionsCount: ({ count }: { count: number }) => count === 1 ? '1 сессия' : `${count} сессий`,
+        noMessages: 'Нет сообщений в этой сессии',
     },
 
     components: {

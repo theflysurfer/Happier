@@ -394,6 +394,7 @@ export const zhHans: TranslationStructure = {
         projectSessions: '项目会话',
         noProjectSessions: '未找到此项目的会话',
         projectSessionsCount: ({ count }: { count: number }) => `${count}个会话`,
+        noMessages: '此会话中没有消息',
 
     },
 

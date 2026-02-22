@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, FlatList } from 'react-native';
+import { View, FlatList, ScrollView, ActivityIndicator } from 'react-native';
 import { Text } from '@/components/StyledText';
-import { useAllSessions } from '@/sync/storage';
+import { useAllSessions, useSessionMessages } from '@/sync/storage';
 import { Session } from '@/sync/storageTypes';
 import { Avatar } from '@/components/Avatar';
 import { getSessionName, getSessionSubtitle, getSessionAvatarId, useSessionStatus } from '@/utils/sessionUtils';
@@ -14,6 +14,10 @@ import { Pressable } from 'react-native';
 import { t } from '@/text';
 import { useLocalSearchParams } from 'expo-router';
 import { StatusDot } from '@/components/StatusDot';
+import { Ionicons } from '@expo/vector-icons';
+import { MarkdownView } from '@/components/markdown/MarkdownView';
+import { formatSessionAsMarkdown } from '@/utils/sessionMarkdown';
+import { sync } from '@/sync/sync';
 
 interface SessionHistoryItem {
     type: 'session' | 'date-header';
@@ -81,6 +85,51 @@ function groupSessionsByDate(sessions: Session[]): SessionHistoryItem[] {
     return items;
 }
 
+// Inline transcript preview, loaded on-demand when expanded
+const TranscriptPreview = React.memo(({ session }: { session: Session }) => {
+    const { messages, isLoaded } = useSessionMessages(session.id);
+    const { theme } = useUnistyles();
+
+    // Trigger message loading
+    React.useEffect(() => {
+        sync.onSessionVisible(session.id);
+    }, [session.id]);
+
+    const markdown = React.useMemo(() => {
+        if (!isLoaded) return null;
+        const chronological = [...messages].reverse();
+        return formatSessionAsMarkdown(session, chronological);
+    }, [session, messages, isLoaded]);
+
+    if (!isLoaded || markdown === null) {
+        return (
+            <View style={styles.previewLoading}>
+                <ActivityIndicator size="small" color={theme.colors.textSecondary} />
+            </View>
+        );
+    }
+
+    if (messages.length === 0) {
+        return (
+            <View style={styles.previewEmpty}>
+                <Text style={[styles.previewEmptyText, { color: theme.colors.textSecondary }]}>
+                    {t('sessionInfo.noMessages')}
+                </Text>
+            </View>
+        );
+    }
+
+    return (
+        <ScrollView
+            style={styles.previewScroll}
+            contentContainerStyle={styles.previewContent}
+            nestedScrollEnabled={true}
+        >
+            <MarkdownView markdown={markdown} />
+        </ScrollView>
+    );
+});
+
 const SessionItemRow = React.memo(({ session, isFirst, isLast, isSingle }: {
     session: Session;
     isFirst: boolean;
@@ -92,33 +141,51 @@ const SessionItemRow = React.memo(({ session, isFirst, isLast, isSingle }: {
     const sessionSubtitle = getSessionSubtitle(session);
     const avatarId = getSessionAvatarId(session);
     const sessionStatus = useSessionStatus(session);
+    const { theme } = useUnistyles();
+    const [expanded, setExpanded] = React.useState(false);
 
     return (
-        <Pressable
-            style={[
-                styles.sessionCard,
-                isSingle ? styles.sessionCardSingle :
-                    isFirst ? styles.sessionCardFirst :
-                        isLast ? styles.sessionCardLast : {}
-            ]}
-            onPress={() => navigateToSession(session.id)}
-        >
-            <Avatar id={avatarId} size={48} monochrome={!sessionStatus.isConnected} flavor={session.metadata?.flavor} />
-            <View style={styles.sessionContent}>
-                <Text style={styles.sessionTitle} numberOfLines={1}>
-                    {sessionName}
-                </Text>
-                <Text style={styles.sessionSubtitle} numberOfLines={1}>
-                    {sessionSubtitle}
-                </Text>
-                <View style={styles.statusRow}>
-                    <StatusDot color={sessionStatus.statusDotColor} isPulsing={sessionStatus.isPulsing} />
-                    <Text style={[styles.statusText, { color: sessionStatus.statusColor }]}>
-                        {sessionStatus.statusText}
-                    </Text>
-                </View>
+        <View style={[
+            styles.sessionCardOuter,
+            isSingle ? styles.sessionCardSingle :
+                isFirst ? styles.sessionCardFirst :
+                    isLast ? styles.sessionCardLast : {}
+        ]}>
+            <View style={styles.sessionCardRow}>
+                <Pressable
+                    style={styles.sessionCardContent}
+                    onPress={() => navigateToSession(session.id)}
+                >
+                    <Avatar id={avatarId} size={48} monochrome={!sessionStatus.isConnected} flavor={session.metadata?.flavor} />
+                    <View style={styles.sessionContent}>
+                        <Text style={styles.sessionTitle} numberOfLines={1}>
+                            {sessionName}
+                        </Text>
+                        <Text style={styles.sessionSubtitle} numberOfLines={1}>
+                            {sessionSubtitle}
+                        </Text>
+                        <View style={styles.statusRow}>
+                            <StatusDot color={sessionStatus.statusDotColor} isPulsing={sessionStatus.isPulsing} />
+                            <Text style={[styles.statusText, { color: sessionStatus.statusColor }]}>
+                                {sessionStatus.statusText}
+                            </Text>
+                        </View>
+                    </View>
+                </Pressable>
+                <Pressable
+                    style={styles.expandButton}
+                    onPress={() => setExpanded(prev => !prev)}
+                    hitSlop={8}
+                >
+                    <Ionicons
+                        name={expanded ? 'chevron-up' : 'chevron-down'}
+                        size={20}
+                        color={theme.colors.textSecondary}
+                    />
+                </Pressable>
             </View>
-        </Pressable>
+            {expanded && <TranscriptPreview session={session} />}
+        </View>
     );
 });
 
@@ -181,13 +248,6 @@ export default React.memo(function ProjectSessionsScreen() {
         }
         return `item-${index}`;
     }, []);
-
-    // Extract folder name for display
-    const folderName = React.useMemo(() => {
-        if (!path) return '';
-        const parts = path.split('/').filter(Boolean);
-        return parts[parts.length - 1] || path;
-    }, [path]);
 
     if (groupedItems.length === 0) {
         return (
@@ -260,14 +320,23 @@ const styles = StyleSheet.create((theme) => ({
         fontWeight: '600',
         letterSpacing: 0.1,
     },
-    sessionCard: {
+    sessionCardOuter: {
         backgroundColor: theme.colors.surface,
         marginHorizontal: 16,
         marginBottom: 1,
-        paddingVertical: 12,
-        paddingHorizontal: 16,
+        overflow: 'hidden',
+    },
+    sessionCardRow: {
         flexDirection: 'row',
         alignItems: 'center',
+        paddingRight: 8,
+    },
+    sessionCardContent: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
     },
     sessionCardFirst: {
         borderTopLeftRadius: 12,
@@ -308,6 +377,36 @@ const styles = StyleSheet.create((theme) => ({
         fontWeight: '500',
         lineHeight: 16,
         ...Typography.default(),
+    },
+    expandButton: {
+        padding: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    // Transcript preview styles
+    previewScroll: {
+        maxHeight: 400,
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.divider,
+    },
+    previewContent: {
+        padding: 16,
+    },
+    previewLoading: {
+        padding: 24,
+        alignItems: 'center',
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.divider,
+    },
+    previewEmpty: {
+        padding: 24,
+        alignItems: 'center',
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.divider,
+    },
+    previewEmptyText: {
+        ...Typography.default(),
+        fontSize: 14,
     },
     emptyContainer: {
         flex: 1,

@@ -392,6 +392,7 @@ export const es: TranslationStructure = {
         projectSessions: 'Sesiones del proyecto',
         noProjectSessions: 'No se encontraron sesiones para este proyecto',
         projectSessionsCount: ({ count }: { count: number }) => count === 1 ? '1 sesión' : `${count} sesiones`,
+        noMessages: 'No hay mensajes en esta sesión',
 
     },
 
