@@ -18,6 +18,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { MarkdownView } from '@/components/markdown/MarkdownView';
 import { formatSessionAsMarkdown } from '@/utils/sessionMarkdown';
 import { sync } from '@/sync/sync';
+import { sessionKill } from '@/sync/ops';
+import { Modal } from '@/modal';
+import { useHappyAction } from '@/hooks/useHappyAction';
+import { HappyError } from '@/utils/errors';
 
 interface SessionHistoryItem {
     type: 'session' | 'date-header';
@@ -144,6 +148,28 @@ const SessionItemRow = React.memo(({ session, isFirst, isLast, isSingle }: {
     const { theme } = useUnistyles();
     const [expanded, setExpanded] = React.useState(false);
 
+    const [killing, performKill] = useHappyAction(async () => {
+        const result = await sessionKill(session.id);
+        if (!result.success) {
+            throw new HappyError(result.message || t('sessionInfo.failedToArchiveSession'), false);
+        }
+    });
+
+    const handleKillSession = React.useCallback(() => {
+        Modal.alert(
+            t('sessionInfo.killSession'),
+            t('sessionInfo.killSessionConfirm'),
+            [
+                { text: t('common.cancel'), style: 'cancel' },
+                {
+                    text: t('sessionInfo.killSession'),
+                    style: 'destructive',
+                    onPress: performKill
+                }
+            ]
+        );
+    }, [performKill]);
+
     return (
         <View style={[
             styles.sessionCardOuter,
@@ -172,6 +198,19 @@ const SessionItemRow = React.memo(({ session, isFirst, isLast, isSingle }: {
                         </View>
                     </View>
                 </Pressable>
+                {sessionStatus.isConnected && (
+                    <Pressable
+                        style={styles.killButton}
+                        onPress={handleKillSession}
+                        hitSlop={8}
+                    >
+                        <Ionicons
+                            name="stop-circle-outline"
+                            size={22}
+                            color="#FF3B30"
+                        />
+                    </Pressable>
+                )}
                 <Pressable
                     style={styles.expandButton}
                     onPress={() => setExpanded(prev => !prev)}
@@ -377,6 +416,11 @@ const styles = StyleSheet.create((theme) => ({
         fontWeight: '500',
         lineHeight: 16,
         ...Typography.default(),
+    },
+    killButton: {
+        padding: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     expandButton: {
         padding: 8,

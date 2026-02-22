@@ -1038,6 +1038,22 @@ export const en: TranslationStructure = {
         approve: 'Approve',
         noChanges: 'No changes detected.',
     },
+
+    memory: {
+        title: 'Memory',
+        claudeProcessMemory: 'Claude Process Memory',
+        systemMemory: 'System Memory',
+        trend: 'Trend',
+        trendStable: 'Stable',
+        trendIncreasing: 'Increasing',
+        trendDecreasing: 'Decreasing',
+        trendUnknown: 'Monitoring...',
+        restartConversation: 'Restart Conversation',
+        restartConversationSubtitle: 'Kill this session and start fresh',
+        restartConversationConfirm: 'Memory usage is critically high. Restart the conversation in a new session?',
+        memoryWarning: ({ usage }: { usage: string }) => `RAM ${usage}`,
+        systemAvailable: ({ available, total }: { available: string; total: string }) => `${available} free of ${total}`,
+    },
 } as const;
 
 export type TranslationsEn = typeof en;

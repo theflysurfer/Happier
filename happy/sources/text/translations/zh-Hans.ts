@@ -1029,4 +1029,20 @@ export const zhHans: TranslationStructure = {
         noChanges: '未检测到更改。',
     },
 
+    memory: {
+        title: '内存',
+        claudeProcessMemory: 'Claude 进程内存',
+        systemMemory: '系统内存',
+        trend: '趋势',
+        trendStable: '稳定',
+        trendIncreasing: '增长中',
+        trendDecreasing: '下降中',
+        trendUnknown: '监测中...',
+        restartConversation: '重启会话',
+        restartConversationSubtitle: '终止当前会话并重新开始',
+        restartConversationConfirm: '内存使用已达到临界水平。是否在新会话中重启对话？',
+        memoryWarning: ({ usage }: { usage: string }) => `RAM ${usage}`,
+        systemAvailable: ({ available, total }: { available: string; total: string }) => `${available} 可用，共 ${total}`,
+    },
+
 } as const;

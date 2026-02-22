@@ -23,6 +23,7 @@ import { t } from '@/text';
 import { Metadata } from '@/sync/storageTypes';
 import { AIBackendProfile, getProfileEnvironmentVariables, validateProfileForAgent } from '@/sync/settings';
 import { getBuiltInProfile } from '@/sync/profileUtils';
+import { formatBytes } from '@/utils/formatBytes';
 import { UnifiedCommandPalette, UnifiedCommand } from './UnifiedCommandPalette';
 import { ImagePreviewRow, type SelectedImage } from './ImageUpload';
 
@@ -80,6 +81,9 @@ interface AgentInputProps {
     onImagePickerPress?: () => void;
     onImageRemove?: (index: number) => void;
     isImageProcessing?: boolean;
+    // Memory monitoring
+    memoryLevel?: 'normal' | 'elevated' | 'high' | 'critical';
+    memoryRssBytes?: number;
 }
 
 const MAX_CONTEXT_SIZE = 190000;
@@ -885,6 +889,16 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
                                     ...Typography.default()
                                 }}>
                                     {props.connectionStatus ? '• ' : ''}{contextWarning.text}
+                                </Text>
+                            )}
+                            {props.memoryLevel && props.memoryLevel !== 'normal' && props.memoryRssBytes != null && (
+                                <Text style={{
+                                    fontSize: 11,
+                                    color: props.memoryLevel === 'critical' ? theme.colors.warningCritical : '#FF9500',
+                                    marginLeft: (props.connectionStatus || contextWarning) ? 8 : 0,
+                                    ...Typography.default()
+                                }}>
+                                    {(props.connectionStatus || contextWarning) ? '• ' : ''}{t('memory.memoryWarning', { usage: formatBytes(props.memoryRssBytes) })}
                                 </Text>
                             )}
                         </View>

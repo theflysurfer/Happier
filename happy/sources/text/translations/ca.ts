@@ -1027,6 +1027,22 @@ export const ca: TranslationStructure = {
         noChanges: 'No s\'han detectat canvis.',
     },
 
+    memory: {
+        title: 'Memòria',
+        claudeProcessMemory: 'Memòria del procés Claude',
+        systemMemory: 'Memòria del sistema',
+        trend: 'Tendència',
+        trendStable: 'Estable',
+        trendIncreasing: 'Creixent',
+        trendDecreasing: 'Disminuint',
+        trendUnknown: 'Monitoritzant...',
+        restartConversation: 'Reiniciar conversa',
+        restartConversationSubtitle: 'Acabar aquesta sessió i començar de nou',
+        restartConversationConfirm: "L'ús de memòria és críticament alt. Reiniciar la conversa en una nova sessió?",
+        memoryWarning: ({ usage }: { usage: string }) => `RAM ${usage}`,
+        systemAvailable: ({ available, total }: { available: string; total: string }) => `${available} lliure de ${total}`,
+    },
+
 } as const;
 
 export type TranslationsCa = typeof ca;

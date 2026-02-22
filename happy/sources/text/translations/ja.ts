@@ -1030,4 +1030,20 @@ export const ja: TranslationStructure = {
         noChanges: '変更は検出されませんでした。',
     },
 
+    memory: {
+        title: 'メモリ',
+        claudeProcessMemory: 'Claude プロセスメモリ',
+        systemMemory: 'システムメモリ',
+        trend: 'トレンド',
+        trendStable: '安定',
+        trendIncreasing: '増加中',
+        trendDecreasing: '減少中',
+        trendUnknown: 'モニタリング中...',
+        restartConversation: '会話を再開',
+        restartConversationSubtitle: 'このセッションを終了して最初からやり直す',
+        restartConversationConfirm: 'メモリ使用量が危険な水準に達しています。新しいセッションで会話を再開しますか？',
+        memoryWarning: ({ usage }: { usage: string }) => `RAM ${usage}`,
+        systemAvailable: ({ available, total }: { available: string; total: string }) => `${available} 空き / 合計 ${total}`,
+    },
+
 } as const;

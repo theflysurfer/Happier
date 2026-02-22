@@ -26,6 +26,8 @@ import { isMachineOnline } from '@/utils/machineUtils';
 import { useNavigateToSession } from '@/hooks/useNavigateToSession';
 import { formatSessionAsMarkdown } from '@/utils/sessionMarkdown';
 import { sync } from '@/sync/sync';
+import { useMemoryMonitor } from '@/hooks/useMemoryMonitor';
+import { formatBytes } from '@/utils/formatBytes';
 
 // Animated status dot component
 function StatusDot({ color, isPulsing, size = 8 }: { color: string; isPulsing?: boolean; size?: number }) {
@@ -85,6 +87,44 @@ function SessionInfoContent({ session }: { session: Session }) {
         return machines.find(m => m.id === session.metadata!.machineId) ?? null;
     }, [machines, session.metadata?.machineId]);
     const machineIsOnline = sessionMachine ? isMachineOnline(sessionMachine) : false;
+
+    // Memory monitoring
+    const memoryStatus = useMemoryMonitor(
+        session.metadata?.machineId,
+        sessionStatus.isConnected
+    );
+
+    // Restart session due to memory pressure
+    const [restarting, performMemoryRestart] = useHappyAction(async () => {
+        if (!session.metadata?.machineId || !session.metadata?.path) {
+            throw new HappyError(t('sessionInfo.failedToReactivateSession'), false);
+        }
+        // Kill current session
+        await sessionKill(session.id);
+        // Spawn new one in same directory
+        const result = await machineSpawnNewSession({
+            machineId: session.metadata.machineId,
+            directory: session.metadata.path,
+        });
+        if (result.type === 'success') {
+            navigateToSession(result.sessionId);
+        }
+    });
+
+    const handleMemoryRestart = useCallback(() => {
+        Modal.alert(
+            t('memory.title'),
+            t('memory.restartConversationConfirm'),
+            [
+                { text: t('common.cancel'), style: 'cancel' },
+                {
+                    text: t('memory.restartConversation'),
+                    style: 'destructive',
+                    onPress: performMemoryRestart
+                }
+            ]
+        );
+    }, [performMemoryRestart]);
 
     const handleCopySessionId = useCallback(async () => {
         if (!session) return;
@@ -490,6 +530,61 @@ function SessionInfoContent({ session }: { session: Session }) {
                         />
                     )}
                 </ItemGroup>
+
+                {/* Memory Monitoring */}
+                {sessionStatus.isConnected && memoryStatus.current && (
+                    <ItemGroup title={t('memory.title')}>
+                        <Item
+                            title={t('memory.claudeProcessMemory')}
+                            detail={formatBytes(memoryStatus.current.claudeRssBytes)}
+                            icon={<Ionicons name="hardware-chip-outline" size={29} color={
+                                memoryStatus.level === 'critical' ? '#FF3B30' :
+                                memoryStatus.level === 'high' ? '#FF9500' :
+                                memoryStatus.level === 'elevated' ? '#FF9500' :
+                                '#34C759'
+                            } />}
+                            showChevron={false}
+                        />
+                        <Item
+                            title={t('memory.systemMemory')}
+                            subtitle={t('memory.systemAvailable', {
+                                available: formatBytes(memoryStatus.current.systemAvailableBytes),
+                                total: formatBytes(memoryStatus.current.systemTotalBytes)
+                            })}
+                            icon={<Ionicons name="server-outline" size={29} color="#5856D6" />}
+                            showChevron={false}
+                        />
+                        <Item
+                            title={t('memory.trend')}
+                            detail={
+                                memoryStatus.trend === 'stable' ? t('memory.trendStable') :
+                                memoryStatus.trend === 'increasing' ? t('memory.trendIncreasing') :
+                                memoryStatus.trend === 'decreasing' ? t('memory.trendDecreasing') :
+                                t('memory.trendUnknown')
+                            }
+                            icon={<Ionicons
+                                name={
+                                    memoryStatus.trend === 'increasing' ? 'trending-up' :
+                                    memoryStatus.trend === 'decreasing' ? 'trending-down' :
+                                    'remove-outline'
+                                }
+                                size={29}
+                                color={memoryStatus.trend === 'increasing' ? '#FF9500' : '#5856D6'}
+                            />}
+                            showChevron={false}
+                        />
+                        {memoryStatus.level === 'critical' && (
+                            <Item
+                                title={t('memory.restartConversation')}
+                                subtitle={t('memory.restartConversationSubtitle')}
+                                icon={<Ionicons name="refresh-outline" size={29} color="#FF3B30" />}
+                                onPress={handleMemoryRestart}
+                                loading={restarting}
+                                destructive
+                            />
+                        )}
+                    </ItemGroup>
+                )}
 
                 {/* Raw JSON (Dev Mode Only) */}
                 {devModeEnabled && (

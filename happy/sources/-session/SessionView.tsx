@@ -12,7 +12,7 @@ import { Modal } from '@/modal';
 import { voiceHooks } from '@/realtime/hooks/voiceHooks';
 import { startRealtimeSession, stopRealtimeSession } from '@/realtime/RealtimeSession';
 import { gitStatusSync } from '@/sync/gitStatusSync';
-import { sessionAbort } from '@/sync/ops';
+import { sessionAbort, sessionKill, machineSpawnNewSession } from '@/sync/ops';
 import { storage, useIsDataReady, useLocalSetting, useRealtimeStatus, useSessionMessages, useSessionUsage, useSetting } from '@/sync/storage';
 import { useSession } from '@/sync/storage';
 import { Session } from '@/sync/storageTypes';
@@ -23,6 +23,8 @@ import { isRunningOnMac } from '@/utils/platform';
 import { useDeviceType, useHeaderHeight, useIsLandscape, useIsTablet } from '@/utils/responsive';
 import { formatPathRelativeToHome, getSessionAvatarId, getSessionName, useSessionStatus } from '@/utils/sessionUtils';
 import { isVersionSupported, MINIMUM_CLI_VERSION } from '@/utils/versionUtils';
+import { useMemoryMonitor } from '@/hooks/useMemoryMonitor';
+import { useNavigateToSession } from '@/hooks/useNavigateToSession';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as React from 'react';
@@ -176,6 +178,39 @@ function SessionViewLoaded({ sessionId, session }: { sessionId: string, session:
     const sessionUsage = useSessionUsage(sessionId);
     const alwaysShowContextSize = useSetting('alwaysShowContextSize');
     const experiments = useSetting('experiments');
+    const navigateToSession = useNavigateToSession();
+
+    // Memory monitoring — polls remote machine every 30s
+    const memoryStatus = useMemoryMonitor(machineId, sessionStatus.isConnected);
+    const hasShownCriticalAlert = React.useRef(false);
+
+    React.useEffect(() => {
+        if (memoryStatus.level === 'critical' && !hasShownCriticalAlert.current) {
+            hasShownCriticalAlert.current = true;
+            Modal.alert(
+                t('memory.title'),
+                t('memory.restartConversationConfirm'),
+                [
+                    { text: t('common.cancel'), style: 'cancel' },
+                    {
+                        text: t('memory.restartConversation'),
+                        style: 'destructive',
+                        onPress: async () => {
+                            if (!machineId || !session.metadata?.path) return;
+                            await sessionKill(sessionId);
+                            const result = await machineSpawnNewSession({
+                                machineId,
+                                directory: session.metadata.path,
+                            });
+                            if (result.type === 'success') {
+                                navigateToSession(result.sessionId);
+                            }
+                        }
+                    }
+                ]
+            );
+        }
+    }, [memoryStatus.level]);
 
     // Use draft hook for auto-saving message drafts
     const { clearDraft } = useDraft(sessionId, message, setMessage);
@@ -337,6 +372,8 @@ function SessionViewLoaded({ sessionId, session }: { sessionId: string, session:
                 contextSize: session.latestUsage.contextSize
             } : undefined}
             alwaysShowContextSize={alwaysShowContextSize}
+            memoryLevel={memoryStatus.level}
+            memoryRssBytes={memoryStatus.current?.claudeRssBytes}
         />
     );
 

@@ -1052,6 +1052,22 @@ export const pl: TranslationStructure = {
         noChanges: 'Nie wykryto zmian.',
     },
 
+    memory: {
+        title: 'Pamięć',
+        claudeProcessMemory: 'Pamięć procesu Claude',
+        systemMemory: 'Pamięć systemowa',
+        trend: 'Trend',
+        trendStable: 'Stabilnie',
+        trendIncreasing: 'Rośnie',
+        trendDecreasing: 'Maleje',
+        trendUnknown: 'Monitorowanie...',
+        restartConversation: 'Uruchom ponownie',
+        restartConversationSubtitle: 'Zakończ sesję i zacznij od nowa',
+        restartConversationConfirm: 'Zużycie pamięci jest krytycznie wysokie. Uruchomić ponownie w nowej sesji?',
+        memoryWarning: ({ usage }: { usage: string }) => `RAM ${usage}`,
+        systemAvailable: ({ available, total }: { available: string; total: string }) => `${available} wolne z ${total}`,
+    },
+
 } as const;
 
 export type TranslationsPl = typeof pl;
