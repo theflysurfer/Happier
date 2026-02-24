@@ -61,7 +61,7 @@ class ApiSocket {
                 token: this.config.token,
                 clientType: 'user-scoped' as const
             },
-            transports: ['websocket'],
+            transports: ['polling', 'websocket'],
             reconnection: true,
             reconnectionDelay: 1000,
             reconnectionDelayMax: 5000,
@@ -112,16 +112,17 @@ class ApiSocket {
      * RPC call for sessions - uses session-specific encryption
      */
     async sessionRPC<R, A>(sessionId: string, method: string, params: A): Promise<R> {
+        if (!this.socket) throw new Error('Socket not connected');
         const sessionEncryption = this.encryption!.getSessionEncryption(sessionId);
         if (!sessionEncryption) {
             throw new Error(`Session encryption not found for ${sessionId}`);
         }
         
-        const result = await this.socket!.emitWithAck('rpc-call', {
+        const result = await this.socket.emitWithAck('rpc-call', {
             method: `${sessionId}:${method}`,
             params: await sessionEncryption.encryptRaw(params)
         });
-        
+
         if (result.ok) {
             return await sessionEncryption.decryptRaw(result.result) as R;
         }
@@ -132,12 +133,13 @@ class ApiSocket {
      * RPC call for machines - uses legacy/global encryption (for now)
      */
     async machineRPC<R, A>(machineId: string, method: string, params: A): Promise<R> {
+        if (!this.socket) throw new Error('Socket not connected');
         const machineEncryption = this.encryption!.getMachineEncryption(machineId);
         if (!machineEncryption) {
             throw new Error(`Machine encryption not found for ${machineId}`);
         }
 
-        const result = await this.socket!.emitWithAck('rpc-call', {
+        const result = await this.socket.emitWithAck('rpc-call', {
             method: `${machineId}:${method}`,
             params: await machineEncryption.encryptRaw(params)
         });
@@ -149,7 +151,8 @@ class ApiSocket {
     }
 
     send(event: string, data: any) {
-        this.socket!.emit(event, data);
+        if (!this.socket) throw new Error('Socket not connected');
+        this.socket.emit(event, data);
         return true;
     }
 
@@ -199,6 +202,27 @@ class ApiSocket {
                 this.connect();
             }
         }
+    }
+
+    //
+    // Connection Helpers
+    //
+
+    waitForConnection(timeoutMs: number = 10000): Promise<void> {
+        if (this.currentStatus === 'connected') return Promise.resolve();
+        return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                cleanup();
+                reject(new Error('Socket not connected'));
+            }, timeoutMs);
+            const cleanup = this.onStatusChange((status) => {
+                if (status === 'connected') {
+                    clearTimeout(timeout);
+                    cleanup();
+                    resolve();
+                }
+            });
+        });
     }
 
     //

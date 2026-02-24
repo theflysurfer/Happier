@@ -162,6 +162,7 @@ export async function machineSpawnNewSession(options: SpawnSessionOptions): Prom
     const { machineId, directory, approvedNewDirectoryCreation = false, token, agent, environmentVariables } = options;
 
     try {
+        await apiSocket.waitForConnection(10000);
         const result = await apiSocket.machineRPC<SpawnSessionResult, {
             type: 'spawn-in-directory'
             directory: string

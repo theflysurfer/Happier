@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, Platform, Pressable, useWindowDimensions, ScrollView, TextInput } from 'react-native';
 import Constants from 'expo-constants';
 import { Typography } from '@/constants/Typography';
-import { useAllMachines, storage, useSetting, useSettingMutable, useSessions } from '@/sync/storage';
+import { useAllMachines, storage, useSetting, useSettingMutable, useSessions, useSocketStatus } from '@/sync/storage';
 import { Ionicons, Octicons } from '@expo/vector-icons';
 import { ItemGroup } from '@/components/ItemGroup';
 import { Item } from '@/components/Item';
@@ -661,13 +661,15 @@ function NewSessionWizard() {
     }, [sessions, selectedMachineId, recentMachinePaths]);
 
     // Validation
+    const socketStatus = useSocketStatus();
     const canCreate = React.useMemo(() => {
         return (
             selectedProfileId !== null &&
             selectedMachineId !== null &&
-            selectedPath.trim() !== ''
+            selectedPath.trim() !== '' &&
+            socketStatus.status === 'connected'
         );
-    }, [selectedProfileId, selectedMachineId, selectedPath]);
+    }, [selectedProfileId, selectedMachineId, selectedPath, socketStatus.status]);
 
     const selectProfile = React.useCallback((profileId: string) => {
         setSelectedProfileId(profileId);
