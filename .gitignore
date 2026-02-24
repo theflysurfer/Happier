@@ -31,3 +31,7 @@ CLAUDE.local.md
 
 # MCP local config
 .mcp.json
+
+# Utility scripts (not part of the app)
+fix_send.py
+patch_*.py
