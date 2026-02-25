@@ -481,7 +481,7 @@ export function normalizeRawMessage(id: string, localId: string | null, createdA
                     content: [{
                         type: 'text',
                         text: raw.content.data.summary ?? '',
-                        uuid: raw.content.data.leafUuid ?? id,
+                        uuid: raw.content.data.uuid ?? id,
                         parentUUID: null
                     }],
                     meta: raw.meta

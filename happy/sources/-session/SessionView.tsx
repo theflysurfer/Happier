@@ -336,13 +336,17 @@ function SessionViewLoaded({ sessionId, session }: { sessionId: string, session:
                 isPulsing: sessionStatus.isPulsing
             }}
             onSend={async () => {
-                if (message.trim() || images.length > 0) {
-                    const imageAttachments = images.length > 0 ? await getImagesAsAttachments() : undefined;
-                    setMessage('');
-                    clearDraft();
-                    clearImages();
-                    sync.sendMessage(sessionId, message, undefined, imageAttachments);
-                    trackMessageSent();
+                try {
+                    if (message.trim() || images.length > 0) {
+                        const imageAttachments = images.length > 0 ? await getImagesAsAttachments() : undefined;
+                        setMessage('');
+                        clearDraft();
+                        clearImages();
+                        await sync.sendMessage(sessionId, message, undefined, imageAttachments);
+                        trackMessageSent();
+                    }
+                } catch (e) {
+                    console.error('Failed to send message:', e);
                 }
             }}
             onMicPress={micButtonState.onMicPress}
