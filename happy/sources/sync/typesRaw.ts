@@ -174,6 +174,7 @@ const rawAgentRecordSchema = z.discriminatedUnion('type', [z.object({
         z.object({ type: z.literal('system') }),
         z.object({ type: z.literal('result') }),
         z.object({ type: z.literal('summary'), summary: z.string() }),
+        z.object({ type: z.literal('rate_limit_event'), rate_limit_info: z.object({}).passthrough() }),
         z.object({ type: z.literal('assistant'), message: z.object({ role: z.literal('assistant'), model: z.string(), content: z.array(rawAgentContentSchema), usage: usageDataSchema.optional() }), parent_tool_use_id: z.string().nullable().optional() }),
         z.object({ type: z.literal('user'), message: z.object({ role: z.literal('user'), content: z.union([z.string(), z.array(rawAgentContentSchema)]) }), parent_tool_use_id: z.string().nullable().optional(), toolUseResult: z.any().nullable().optional() }),
     ]), z.object({
@@ -467,6 +468,11 @@ export function normalizeRawMessage(id: string, localId: string | null, createdA
 
             // Skip compact summary messages
             if (raw.content.data.isCompactSummary) {
+                return null;
+            }
+
+            // Skip rate limit events (metadata, not displayable)
+            if (raw.content.data.type === 'rate_limit_event') {
                 return null;
             }
 
