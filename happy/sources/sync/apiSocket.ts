@@ -110,14 +110,25 @@ class ApiSocket {
 
     /**
      * RPC call for sessions - uses session-specific encryption
+     * Waits up to 10s for encryption to be initialized (handles direct navigation timing)
      */
     async sessionRPC<R, A>(sessionId: string, method: string, params: A): Promise<R> {
         if (!this.socket) throw new Error('Socket not connected');
-        const sessionEncryption = this.encryption!.getSessionEncryption(sessionId);
+
+        // Wait for encryption to be ready (may not be initialized yet on direct navigation)
+        let sessionEncryption = this.encryption!.getSessionEncryption(sessionId);
         if (!sessionEncryption) {
-            throw new Error(`Session encryption not found for ${sessionId}`);
+            const start = Date.now();
+            while (Date.now() - start < 10000) {
+                await new Promise(resolve => setTimeout(resolve, 200));
+                sessionEncryption = this.encryption!.getSessionEncryption(sessionId);
+                if (sessionEncryption) break;
+            }
+            if (!sessionEncryption) {
+                throw new Error(`Session encryption not found for ${sessionId}`);
+            }
         }
-        
+
         const result = await this.socket.emitWithAck('rpc-call', {
             method: `${sessionId}:${method}`,
             params: await sessionEncryption.encryptRaw(params)
@@ -131,12 +142,23 @@ class ApiSocket {
 
     /**
      * RPC call for machines - uses legacy/global encryption (for now)
+     * Waits up to 10s for encryption to be initialized (handles direct navigation timing)
      */
     async machineRPC<R, A>(machineId: string, method: string, params: A): Promise<R> {
         if (!this.socket) throw new Error('Socket not connected');
-        const machineEncryption = this.encryption!.getMachineEncryption(machineId);
+
+        // Wait for encryption to be ready
+        let machineEncryption = this.encryption!.getMachineEncryption(machineId);
         if (!machineEncryption) {
-            throw new Error(`Machine encryption not found for ${machineId}`);
+            const start = Date.now();
+            while (Date.now() - start < 10000) {
+                await new Promise(resolve => setTimeout(resolve, 200));
+                machineEncryption = this.encryption!.getMachineEncryption(machineId);
+                if (machineEncryption) break;
+            }
+            if (!machineEncryption) {
+                throw new Error(`Machine encryption not found for ${machineId}`);
+            }
         }
 
         const result = await this.socket.emitWithAck('rpc-call', {
