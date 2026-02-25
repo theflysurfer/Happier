@@ -917,6 +917,74 @@ export const knownTools = {
             }
             return null;
         }
+    },
+    'TaskCreate': {
+        title: 'Create Task',
+        icon: (size: number = 24, color: string = '#000') => <Ionicons name="add-circle-outline" size={size} color={color} />,
+        noStatus: true,
+        minimal: false,
+        extractDescription: (opts: { metadata: Metadata | null, tool: ToolCall }) => {
+            const subject = opts.tool.input?.subject || opts.tool.input?.content;
+            if (typeof subject === 'string') {
+                return subject.length > 40 ? subject.substring(0, 40) + '...' : subject;
+            }
+            return 'Create Task';
+        },
+    },
+    'TaskUpdate': {
+        title: 'Update Task',
+        icon: (size: number = 24, color: string = '#000') => <Octicons name="pencil" size={size} color={color} />,
+        noStatus: true,
+        minimal: false,
+        extractDescription: (opts: { metadata: Metadata | null, tool: ToolCall }) => {
+            const id = opts.tool.input?.taskId || opts.tool.input?.id;
+            const status = opts.tool.input?.status;
+            if (id && status) {
+                return `#${id} → ${status.replace('_', ' ')}`;
+            }
+            if (id) return `Task #${id}`;
+            return 'Update Task';
+        },
+    },
+    'TaskGet': {
+        title: 'Get Task',
+        icon: ICON_READ,
+        noStatus: true,
+        minimal: true,
+        extractDescription: (opts: { metadata: Metadata | null, tool: ToolCall }) => {
+            const id = opts.tool.input?.taskId || opts.tool.input?.id;
+            if (id) return `Task #${id}`;
+            return 'Get Task';
+        },
+    },
+    'TaskList': {
+        title: 'Task List',
+        icon: ICON_TODO,
+        noStatus: true,
+        minimal: false,
+        extractDescription: () => 'Task List',
+    },
+    'TaskStop': {
+        title: 'Stop Task',
+        icon: (size: number = 24, color: string = '#000') => <Ionicons name="stop-circle-outline" size={size} color={color} />,
+        noStatus: true,
+        minimal: true,
+        extractDescription: (opts: { metadata: Metadata | null, tool: ToolCall }) => {
+            const id = opts.tool.input?.taskId || opts.tool.input?.id;
+            if (id) return `Stop Task #${id}`;
+            return 'Stop Task';
+        },
+    },
+    'TaskOutput': {
+        title: 'Task Output',
+        icon: ICON_READ,
+        noStatus: true,
+        minimal: true,
+        extractDescription: (opts: { metadata: Metadata | null, tool: ToolCall }) => {
+            const id = opts.tool.input?.taskId || opts.tool.input?.id;
+            if (id) return `Output #${id}`;
+            return 'Task Output';
+        },
     }
 } satisfies Record<string, {
     title?: string | ((opts: { metadata: Metadata | null, tool: ToolCall }) => string);
