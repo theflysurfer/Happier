@@ -134,10 +134,10 @@ class ApiSocket {
             params: await sessionEncryption.encryptRaw(params)
         });
 
-        if (result.ok) {
+        if (result?.ok) {
             return await sessionEncryption.decryptRaw(result.result) as R;
         }
-        throw new Error('RPC call failed');
+        throw new Error(result?.error ?? 'RPC call failed');
     }
 
     /**
@@ -166,10 +166,10 @@ class ApiSocket {
             params: await machineEncryption.encryptRaw(params)
         });
 
-        if (result.ok) {
+        if (result?.ok) {
             return await machineEncryption.decryptRaw(result.result) as R;
         }
-        throw new Error('RPC call failed');
+        throw new Error(result?.error ?? 'RPC call failed');
     }
 
     send(event: string, data: any) {
