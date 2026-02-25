@@ -961,6 +961,8 @@ export const zhHans: TranslationStructure = {
         cut: '剪切',
         paste: '粘贴',
         search: '搜索文件...',
+        sessionOffline: '会话已离线',
+        sessionOfflineHelp: '启动 Claude Code 会话以浏览文件',
     },
 
     // TODO: Translate to target language

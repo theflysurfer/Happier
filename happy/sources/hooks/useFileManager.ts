@@ -58,6 +58,7 @@ interface FileManagerState {
 
 export function useFileManager(sessionId: string) {
     const session = storage.getState().sessions[sessionId];
+    const isOnline = session?.active === true;
     const rootPath = session?.metadata?.path || '/';
 
     const [state, setState] = React.useState<FileManagerState>(() => {
@@ -73,9 +74,26 @@ export function useFileManager(sessionId: string) {
     });
 
     const loadTree = React.useCallback(async (path: string) => {
+        // Guard: don't attempt RPC if session is offline
+        if (!storage.getState().sessions[sessionId]?.active) {
+            setState(prev => ({
+                ...prev,
+                error: 'session_offline',
+                isLoading: false,
+            }));
+            return;
+        }
         setState(prev => ({ ...prev, isLoading: prev.tree === null, error: null }));
         try {
             const response = await sessionGetDirectoryTree(sessionId, path, 3);
+            if (!response) {
+                setState(prev => ({
+                    ...prev,
+                    error: 'Empty response from server',
+                    isLoading: false,
+                }));
+                return;
+            }
             if (response.success && response.tree) {
                 setCachedTree(sessionId, path, response.tree);
                 setState(prev => ({
@@ -192,6 +210,7 @@ export function useFileManager(sessionId: string) {
 
     return {
         ...state,
+        isOnline,
         rootPath,
         navigateTo,
         toggleExpand,

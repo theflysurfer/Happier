@@ -984,6 +984,8 @@ export const pl: TranslationStructure = {
         cut: 'Wytnij',
         paste: 'Wklej',
         search: 'Szukaj plików...',
+        sessionOffline: 'Sesja jest offline',
+        sessionOfflineHelp: 'Uruchom sesję Claude Code, aby przeglądać pliki',
     },
 
     // TODO: Translate to target language

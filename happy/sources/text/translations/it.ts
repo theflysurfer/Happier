@@ -959,6 +959,8 @@ export const it: TranslationStructure = {
         cut: 'Taglia',
         paste: 'Incolla',
         search: 'Cerca file...',
+        sessionOffline: 'Sessione non in linea',
+        sessionOfflineHelp: 'Avvia una sessione Claude Code per sfogliare i file',
     },
 
     // TODO: Translate to target language

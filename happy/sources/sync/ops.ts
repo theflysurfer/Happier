@@ -493,6 +493,9 @@ export async function sessionGetDirectoryTree(
             'getDirectoryTree',
             request
         );
+        if (!response) {
+            return { success: false, error: 'Empty RPC response' };
+        }
         return response;
     } catch (error) {
         return {

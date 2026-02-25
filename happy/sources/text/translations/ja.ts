@@ -962,6 +962,8 @@ export const ja: TranslationStructure = {
         cut: '切り取り',
         paste: '貼り付け',
         search: 'ファイルを検索...',
+        sessionOffline: 'セッションはオフラインです',
+        sessionOfflineHelp: 'ファイルを閲覧するにはClaude Codeセッションを開始してください',
     },
 
     // TODO: Translate to target language

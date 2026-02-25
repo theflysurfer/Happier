@@ -959,6 +959,8 @@ export const ca: TranslationStructure = {
         cut: 'Retallar',
         paste: 'Enganxar',
         search: 'Cercar fitxers...',
+        sessionOffline: 'La sessió està desconnectada',
+        sessionOfflineHelp: 'Inicia una sessió de Claude Code per explorar fitxers',
     },
 
     // TODO: Translate to target language

@@ -10,6 +10,7 @@ import { layout } from '@/components/layout';
 import { t } from '@/text';
 import { Modal } from '@/modal';
 import { useFileManager } from '@/hooks/useFileManager';
+import { useSession } from '@/sync/storage';
 import { Breadcrumb } from '@/components/filemanager/Breadcrumb';
 import { TreeView } from '@/components/filemanager/TreeView';
 import { FileActions } from '@/components/filemanager/FileActions';
@@ -25,6 +26,17 @@ export default React.memo(function FileManagerScreen() {
     const { theme } = useUnistyles();
 
     const fm = useFileManager(sessionId);
+    const session = useSession(sessionId);
+    const isOnline = session?.active === true;
+
+    // Auto-refresh when session comes online
+    const prevOnlineRef = React.useRef(isOnline);
+    React.useEffect(() => {
+        if (isOnline && !prevOnlineRef.current) {
+            fm.refresh();
+        }
+        prevOnlineRef.current = isOnline;
+    }, [isOnline, fm.refresh]);
 
     const [selectedNode, setSelectedNode] = React.useState<TreeNode | null>(null);
     const [actionsVisible, setActionsVisible] = React.useState(false);
@@ -160,6 +172,20 @@ export default React.memo(function FileManagerScreen() {
         return result || fm.tree;
     }, [fm.tree, searchQuery]);
 
+    if (!isOnline && !fm.tree) {
+        return (
+            <View style={[styles.center, { backgroundColor: theme.colors.surface }]}>
+                <Octicons name="plug" size={48} color={theme.colors.textSecondary} />
+                <Text style={[styles.errorText, { color: theme.colors.textSecondary }]}>
+                    {t('fileManager.sessionOffline')}
+                </Text>
+                <Text style={[styles.offlineHelpText, { color: theme.colors.textSecondary }]}>
+                    {t('fileManager.sessionOfflineHelp')}
+                </Text>
+            </View>
+        );
+    }
+
     if (fm.isLoading && !fm.tree) {
         return (
             <View style={[styles.center, { backgroundColor: theme.colors.surface }]}>
@@ -279,6 +305,13 @@ const styles = StyleSheet.create((theme) => ({
         fontSize: 16,
         marginTop: 16,
         textAlign: 'center',
+    },
+    offlineHelpText: {
+        ...Typography.default(),
+        fontSize: 14,
+        marginTop: 8,
+        textAlign: 'center',
+        opacity: 0.7,
     },
     searchContainer: {
         flexDirection: 'row',

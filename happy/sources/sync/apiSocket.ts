@@ -135,7 +135,11 @@ class ApiSocket {
         });
 
         if (result?.ok) {
-            return await sessionEncryption.decryptRaw(result.result) as R;
+            const decrypted = await sessionEncryption.decryptRaw(result.result);
+            if (decrypted == null) {
+                throw new Error('RPC response decryption returned null');
+            }
+            return decrypted as R;
         }
         throw new Error(result?.error ?? 'RPC call failed');
     }
@@ -167,7 +171,11 @@ class ApiSocket {
         });
 
         if (result?.ok) {
-            return await machineEncryption.decryptRaw(result.result) as R;
+            const decrypted = await machineEncryption.decryptRaw(result.result);
+            if (decrypted == null) {
+                throw new Error('RPC response decryption returned null');
+            }
+            return decrypted as R;
         }
         throw new Error(result?.error ?? 'RPC call failed');
     }

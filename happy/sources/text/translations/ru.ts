@@ -983,6 +983,8 @@ export const ru: TranslationStructure = {
         cut: 'Вырезать',
         paste: 'Вставить',
         search: 'Поиск файлов...',
+        sessionOffline: 'Сессия не в сети',
+        sessionOfflineHelp: 'Запустите сессию Claude Code для просмотра файлов',
     },
 
     // TODO: Translate to target language

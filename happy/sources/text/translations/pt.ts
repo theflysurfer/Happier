@@ -959,6 +959,8 @@ export const pt: TranslationStructure = {
         cut: 'Recortar',
         paste: 'Colar',
         search: 'Pesquisar arquivos...',
+        sessionOffline: 'Sessão está offline',
+        sessionOfflineHelp: 'Inicie uma sessão do Claude Code para explorar arquivos',
     },
 
     // TODO: Translate to target language

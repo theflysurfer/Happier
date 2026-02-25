@@ -959,6 +959,8 @@ export const en = {
         cut: 'Cut',
         paste: 'Paste',
         search: 'Search files...',
+        sessionOffline: 'Session is offline',
+        sessionOfflineHelp: 'Start a Claude Code session to browse files',
     },
 
     editor: {
