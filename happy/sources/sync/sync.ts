@@ -1473,7 +1473,6 @@ class Sync {
         }
         console.log('Batch decrypted and normalized messages in', Date.now() - start, 'ms');
         console.log('normalizedMessages', JSON.stringify(normalizedMessages));
-        // console.log('messages', JSON.stringify(normalizedMessages));
 
         // Apply to storage
         this.applyMessages(sessionId, normalizedMessages);

@@ -470,6 +470,24 @@ export function normalizeRawMessage(id: string, localId: string | null, createdA
                 return null;
             }
 
+            // Handle context window summary messages (compressed conversation history)
+            if (raw.content.data.type === 'summary') {
+                return {
+                    id,
+                    localId,
+                    createdAt,
+                    role: 'agent',
+                    isSidechain: false,
+                    content: [{
+                        type: 'text',
+                        text: raw.content.data.summary ?? '',
+                        uuid: raw.content.data.leafUuid ?? id,
+                        parentUUID: null
+                    }],
+                    meta: raw.meta
+                };
+            }
+
             // Handle Assistant messages (including sidechains)
             if (raw.content.data.type === 'assistant') {
                 if (!raw.content.data.uuid) {
