@@ -236,6 +236,7 @@ export const ca: TranslationStructure = {
         userNotFound: 'Usuari no trobat',
         sessionDeleted: 'La sessió s\'ha eliminat',
         sessionDeletedDescription: 'Aquesta sessió s\'ha eliminat permanentment',
+        sendFailed: 'No s\'ha pogut enviar el missatge',
 
         // Error functions with context
         fieldError: ({ field, reason }: { field: string; reason: string }) =>

@@ -347,6 +347,7 @@ function SessionViewLoaded({ sessionId, session }: { sessionId: string, session:
                     }
                 } catch (e) {
                     console.error('Failed to send message:', e);
+                    Modal.alert(t('common.error'), t('errors.sendFailed'));
                 }
             }}
             onMicPress={micButtonState.onMicPress}

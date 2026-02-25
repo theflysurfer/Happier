@@ -236,6 +236,7 @@ export const pt: TranslationStructure = {
         userNotFound: 'Usuário não encontrado',
         sessionDeleted: 'A sessão foi excluída',
         sessionDeletedDescription: 'Esta sessão foi removida permanentemente',
+        sendFailed: 'Falha ao enviar mensagem',
 
         // Error functions with context
         fieldError: ({ field, reason }: { field: string; reason: string }) =>

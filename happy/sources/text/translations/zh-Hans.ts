@@ -238,6 +238,7 @@ export const zhHans: TranslationStructure = {
         userNotFound: '未找到用户',
         sessionDeleted: '会话已被删除',
         sessionDeletedDescription: '此会话已被永久删除',
+        sendFailed: '消息发送失败',
 
         // Error functions with context
         fieldError: ({ field, reason }: { field: string; reason: string }) =>

@@ -268,6 +268,7 @@ export const ja: TranslationStructure = {
         userNotFound: 'ユーザーが見つかりません',
         sessionDeleted: 'セッションは削除されました',
         sessionDeletedDescription: 'このセッションは完全に削除されました',
+        sendFailed: 'メッセージの送信に失敗しました',
 
         // Error functions with context
         fieldError: ({ field, reason }: { field: string; reason: string }) =>

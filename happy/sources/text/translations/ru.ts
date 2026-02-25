@@ -218,6 +218,7 @@ export const ru: TranslationStructure = {
         userNotFound: 'Пользователь не найден',
         sessionDeleted: 'Сессия была удалена',
         sessionDeletedDescription: 'Эта сессия была окончательно удалена',
+        sendFailed: 'Не удалось отправить сообщение',
 
         // Error functions with context
         fieldError: ({ field, reason }: { field: string; reason: string }) =>

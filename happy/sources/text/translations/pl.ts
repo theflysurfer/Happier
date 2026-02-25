@@ -247,6 +247,7 @@ export const pl: TranslationStructure = {
         userNotFound: 'Użytkownik nie został znaleziony',
         sessionDeleted: 'Sesja została usunięta',
         sessionDeletedDescription: 'Ta sesja została trwale usunięta',
+        sendFailed: 'Nie udało się wysłać wiadomości',
 
         // Error functions with context
         fieldError: ({ field, reason }: { field: string; reason: string }) =>
