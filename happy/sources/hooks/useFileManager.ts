@@ -11,11 +11,16 @@ import { storage } from '@/sync/storage';
 const mmkv = new MMKV();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
+// MMKV keys cannot contain backslashes — normalize Windows paths
+function cacheKey(sessionId: string, path: string): string {
+    return `filetree:${sessionId}:${path.replace(/\\/g, '/')}`;
+}
+
 /**
  * Get cached file tree from MMKV, returns null if expired or missing.
  */
 function getCachedTree(sessionId: string, path: string): TreeNode | null {
-    const key = `filetree:${sessionId}:${path}`;
+    const key = cacheKey(sessionId, path);
     const raw = mmkv.getString(key);
     if (!raw) return null;
     try {
@@ -31,7 +36,7 @@ function getCachedTree(sessionId: string, path: string): TreeNode | null {
  * Store file tree in MMKV cache.
  */
 function setCachedTree(sessionId: string, path: string, tree: TreeNode) {
-    const key = `filetree:${sessionId}:${path}`;
+    const key = cacheKey(sessionId, path);
     mmkv.set(key, JSON.stringify({ tree, timestamp: Date.now() }));
 }
 
@@ -39,7 +44,7 @@ function setCachedTree(sessionId: string, path: string, tree: TreeNode) {
  * Invalidate file tree cache for a session/path.
  */
 function invalidateCache(sessionId: string, path: string) {
-    const key = `filetree:${sessionId}:${path}`;
+    const key = cacheKey(sessionId, path);
     mmkv.delete(key);
 }
 
