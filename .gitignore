@@ -35,3 +35,4 @@ CLAUDE.local.md
 # Utility scripts (not part of the app)
 fix_send.py
 patch_*.py
+happy/screenshots/

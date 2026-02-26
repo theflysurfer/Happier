@@ -336,11 +336,8 @@ A resilient testing script is available at `scripts/android-test.sh`:
 
 ### Environment
 
-- **Android SDK**: `C:\Dev\android` (set in PATH)
-- **AVD**: `happy_test` (pre-configured emulator)
-- **ADB**: `C:\Dev\android\platform-tools\adb.exe`
-- **Emulator**: `C:\Dev\android\emulator\emulator.exe`
-- **GPU**: Use `-gpu host` flag (NVIDIA RTX 3050 Ti) - swiftshader causes hangs
+- **ADB**: `C:\tools\adb\adb.exe` (standalone, no full SDK locally)
+- **Android builds**: Done on VPS only (see `../docs/BUILD-ANDROID.md`)
 - **App package**: `com.slopus.happy.dev` (development variant)
 
 ### Real Device Testing (USB)
@@ -360,10 +357,7 @@ A resilient testing script is available at `scripts/android-test.sh`:
 
 ### Known Issues
 
-- **Path with spaces/parentheses**: The project path has spaces and parentheses which cause CMake/ninja 260-char path limit errors. **Fixed** by the junction `C:\h` + Expo config plugin `withWindowsPathFix.js` (see "Windows 260-char Path Fix" section below).
-- **Stale emulator locks**: If the emulator crashes, `.lock` files remain in `~/.android/avd/happy_test.avd/`. The test script auto-cleans these.
-- **ANR dialogs**: The emulator may show "app isn't responding" dialogs on first boot. The script dismisses them automatically.
-- **Dev client vs release APK**: The installed APK may be a release build without dev-client support. To get live Metro reloading, build with `eas build --profile development --platform android` or `npx expo run:android`.
+- **Dev client vs release APK**: The installed APK may be a release build without dev-client support. To get live Metro reloading, build with `eas build --profile development --platform android`.
 
 ### OTA Updates (EAS Update)
 
@@ -392,7 +386,11 @@ yarn ota:production
 
 ### Deploying Code to Device
 
-**Full build guide**: See `../docs/BUILD-ANDROID.md` (Windows local, VPS, EAS, OTA, traps)
+**Full build guide**: See `../docs/BUILD-ANDROID.md`
+
+- **Native builds**: VPS only (`ssh automation@69.62.108.82`). No local Android SDK.
+- **ADB**: `C:\tools\adb\adb.exe` (standalone, for `adb install` only)
+- **OTA pushes**: Run locally, no SDK needed
 
 **Quick OTA push** (JS-only changes, no rebuild):
 ```bash
