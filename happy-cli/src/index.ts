@@ -90,6 +90,42 @@ import { writeFileSync } from 'node:fs'
       process.exit(1)
     }
     return;
+  } else if (subcommand === 'pi') {
+    // Handle pi command (Pi coding agent — multi-provider, in-process SDK)
+    try {
+      const { runPi } = await import('@/pi/runPi');
+
+      let startedBy: 'daemon' | 'terminal' | undefined = undefined;
+      for (let i = 1; i < args.length; i++) {
+        if (args[i] === '--started-by') {
+          startedBy = args[++i] as 'daemon' | 'terminal';
+        }
+      }
+
+      const { credentials } = await authAndSetupMachineIfNeeded();
+
+      // Auto-start daemon (same as claude/gemini)
+      logger.debug('Ensuring Happy background service is running & matches our version...');
+      if (!(await isDaemonRunningCurrentlyInstalledHappyVersion())) {
+        logger.debug('Starting Happy background service...');
+        const daemonProcess = spawnHappyCLI(['daemon', 'start-sync'], {
+          detached: true,
+          stdio: 'ignore',
+          env: process.env,
+        });
+        daemonProcess.unref();
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+
+      await runPi({ credentials, startedBy });
+    } catch (error) {
+      console.error(chalk.red('Error:'), error instanceof Error ? error.message : 'Unknown error')
+      if (process.env.DEBUG) {
+        console.error(error)
+      }
+      process.exit(1)
+    }
+    return;
   } else if (subcommand === 'codex') {
     // Handle codex command
     try {
@@ -545,6 +581,7 @@ ${chalk.bold('happy')} - Claude Code On the Go
 ${chalk.bold('Usage:')}
   happy [options]         Start Claude with mobile control
   happy auth              Manage authentication
+  happy pi                Start Pi mode (multi-provider, in-process)
   happy codex             Start Codex mode
   happy gemini            Start Gemini mode (ACP)
   happy connect           Connect AI vendor API keys

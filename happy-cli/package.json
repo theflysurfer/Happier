@@ -88,6 +88,7 @@
   },
   "dependencies": {
     "@agentclientprotocol/sdk": "^0.8.0",
+    "@mariozechner/pi-coding-agent": "^0.55.1",
     "@modelcontextprotocol/sdk": "^1.22.0",
     "@stablelib/base64": "^2.0.1",
     "@stablelib/hex": "^2.0.1",
