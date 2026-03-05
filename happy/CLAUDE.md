@@ -304,6 +304,43 @@ Master Secret (32 bytes)
 - The CLI `encryption.publicKey` is NOT the same as the account secret
 - To get the account secret: open the app > Settings > Account > reveal secret key
 
+## Web App (Testing & Production)
+
+**Production URL**: `https://app.happy.engineering/`
+
+The app runs as a full web app at this URL — same features as mobile (sessions, chat, file manager, plannotator, etc.). Use this for testing features via browser automation instead of deploying APKs to a device.
+
+### Testing with HydraSpecter (Browser Automation)
+
+Use HydraSpecter MCP (`http://127.0.0.1:8750/servers/hydraspecter/mcp`) to test features in the browser:
+
+```bash
+# Create browser instance
+browser_create(url="https://app.happy.engineering/")
+
+# Get page structure
+browser_snapshot(instance_id="...")
+
+# Screenshot
+browser_screenshot(instance_id="...")
+
+# Click, type, navigate...
+browser_click(instance_id="...", selector="...")
+```
+
+**Auth**: The web app uses `localStorage` for credentials. If not logged in, it shows a login page with QR scan or manual secret key entry. Once logged in, sessions persist across browser restarts.
+
+**Advantages over mobile testing**:
+- No APK build/deploy cycle
+- No USB cable required
+- Screenshots always work (no FLAG_SECURE)
+- Full DOM inspection via `browser_snapshot`
+- Console logs via `browser_enable_console_capture` + `browser_get_console_logs`
+
+**⚠️ CRITICAL**: `app.happy.engineering` is the **upstream production build** (Slopus). It does NOT contain our fork's custom features (Plannotator, File Manager, Image Upload, Memory Monitor, custom tool views, etc.). To test our features in a browser, you must run Expo Web locally (`yarn web` on port 19006) or use the mobile APK built from the VPS.
+
+**Expo Web local issues**: Metro bundler crashes with EPIPE on OneDrive paths. Known issue with jest-worker. May need to clone repo outside OneDrive to run web locally.
+
 ## Android Testing
 
 ### MCP Mobile Testing Rules
