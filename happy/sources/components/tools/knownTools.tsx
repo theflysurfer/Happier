@@ -985,6 +985,226 @@ export const knownTools = {
             if (id) return `Output #${id}`;
             return 'Task Output';
         },
+    },
+
+    // ── Pi SDK tools (lowercase) ──────────────────────────────────────
+    // Pi uses lowercase tool names: bash, write, grep, find, ls
+    // (read and edit are already covered by Gemini-compatible entries above)
+
+    'bash': {
+        title: (opts: { metadata: Metadata | null, tool: ToolCall }) => {
+            if (opts.tool.description) return opts.tool.description;
+            return t('tools.names.terminal');
+        },
+        icon: ICON_TERMINAL,
+        minimal: true,
+        hideDefaultError: true,
+        isMutable: true,
+        input: z.object({
+            command: z.string().describe('The command to execute'),
+            timeout: z.number().optional().describe('Timeout in seconds')
+        }).partial().loose(),
+        extractSubtitle: (opts: { metadata: Metadata | null, tool: ToolCall }) => {
+            if (typeof opts.tool.input?.command === 'string') {
+                return opts.tool.input.command;
+            }
+            return null;
+        }
+    },
+    'write': {
+        title: (opts: { metadata: Metadata | null, tool: ToolCall }) => {
+            if (typeof opts.tool.input?.path === 'string') {
+                return resolvePath(opts.tool.input.path, opts.metadata);
+            }
+            return t('tools.names.writeFile');
+        },
+        icon: ICON_EDIT,
+        isMutable: true,
+        input: z.object({
+            path: z.string().describe('Path to the file to write'),
+            content: z.string().describe('Content to write')
+        }).partial().loose()
+    },
+    'grep': {
+        title: (opts: { metadata: Metadata | null, tool: ToolCall }) => {
+            if (typeof opts.tool.input?.pattern === 'string') {
+                return `grep(${opts.tool.input.pattern})`;
+            }
+            return 'Search Content';
+        },
+        icon: ICON_READ,
+        minimal: true,
+        input: z.object({
+            pattern: z.string().describe('Pattern to search for'),
+            path: z.string().optional().describe('File or directory to search in'),
+            glob: z.string().optional().describe('Glob pattern to filter files'),
+            ignoreCase: z.boolean().optional(),
+            literal: z.boolean().optional(),
+            context: z.number().optional(),
+            limit: z.number().optional()
+        }).partial().loose(),
+        extractSubtitle: (opts: { metadata: Metadata | null, tool: ToolCall }) => {
+            if (typeof opts.tool.input?.pattern === 'string') {
+                const inPath = opts.tool.input.path ? ` in ${opts.tool.input.path}` : '';
+                return `${opts.tool.input.pattern}${inPath}`;
+            }
+            return null;
+        }
+    },
+    'find': {
+        title: (opts: { metadata: Metadata | null, tool: ToolCall }) => {
+            if (typeof opts.tool.input?.pattern === 'string') {
+                return opts.tool.input.pattern;
+            }
+            return t('tools.names.searchFiles');
+        },
+        icon: ICON_SEARCH,
+        minimal: true,
+        input: z.object({
+            pattern: z.string().describe('Pattern to match files'),
+            path: z.string().optional().describe('Directory to search in'),
+            limit: z.number().optional()
+        }).partial().loose()
+    },
+    'ls': {
+        title: (opts: { metadata: Metadata | null, tool: ToolCall }) => {
+            if (typeof opts.tool.input?.path === 'string') {
+                return resolvePath(opts.tool.input.path, opts.metadata);
+            }
+            return t('tools.names.listFiles');
+        },
+        icon: ICON_SEARCH,
+        minimal: true,
+        input: z.object({
+            path: z.string().optional().describe('Directory to list'),
+            limit: z.number().optional()
+        }).partial().loose()
+    },
+
+    // ── Pi extension tools ────────────────────────────────────────────
+
+    'fast_search_find_files': {
+        title: (opts: { metadata: Metadata | null, tool: ToolCall }) => {
+            if (typeof opts.tool.input?.pattern === 'string') return opts.tool.input.pattern;
+            return 'Find Files';
+        },
+        icon: ICON_SEARCH,
+        minimal: true,
+        input: z.object({ pattern: z.string().optional() }).partial().loose()
+    },
+    'fast_search_grep_content': {
+        title: (opts: { metadata: Metadata | null, tool: ToolCall }) => {
+            if (typeof opts.tool.input?.pattern === 'string') return `grep(${opts.tool.input.pattern})`;
+            return 'Search Content';
+        },
+        icon: ICON_SEARCH,
+        minimal: true,
+        input: z.object({ pattern: z.string().optional() }).partial().loose()
+    },
+    'fast_search_symbols': {
+        title: (opts: { metadata: Metadata | null, tool: ToolCall }) => {
+            if (typeof opts.tool.input?.query === 'string') return opts.tool.input.query;
+            return 'Find Symbols';
+        },
+        icon: ICON_SEARCH,
+        minimal: true,
+        input: z.object({ query: z.string().optional() }).partial().loose()
+    },
+    'fast_search_fulltext': {
+        title: (opts: { metadata: Metadata | null, tool: ToolCall }) => {
+            if (typeof opts.tool.input?.query === 'string') return opts.tool.input.query;
+            return 'Full-Text Search';
+        },
+        icon: ICON_SEARCH,
+        minimal: true,
+        input: z.object({ query: z.string().optional() }).partial().loose()
+    },
+    'fast_search_recent_files': {
+        title: 'Recent Files',
+        icon: ICON_SEARCH,
+        minimal: true,
+        input: z.object({}).partial().loose()
+    },
+    'fast_search_index_project': {
+        title: 'Index Project',
+        icon: (size: number = 24, color: string = '#000') => <Ionicons name="sync-outline" size={size} color={color} />,
+        minimal: true,
+        input: z.object({}).partial().loose()
+    },
+    'web_search': {
+        title: (opts: { metadata: Metadata | null, tool: ToolCall }) => {
+            if (typeof opts.tool.input?.query === 'string') return opts.tool.input.query;
+            return 'Web Search';
+        },
+        icon: ICON_WEB,
+        minimal: true,
+        input: z.object({ query: z.string().optional() }).partial().loose()
+    },
+    'web_fetch': {
+        title: (opts: { metadata: Metadata | null, tool: ToolCall }) => {
+            if (typeof opts.tool.input?.url === 'string') {
+                try { return new URL(opts.tool.input.url).hostname; } catch { return 'Fetch URL'; }
+            }
+            return 'Fetch URL';
+        },
+        icon: ICON_WEB,
+        minimal: true,
+        input: z.object({ url: z.string().optional() }).partial().loose()
+    },
+    'pinchtab_navigate': {
+        title: (opts: { metadata: Metadata | null, tool: ToolCall }) => {
+            if (typeof opts.tool.input?.url === 'string') {
+                try { return new URL(opts.tool.input.url).hostname; } catch { return opts.tool.input.url; }
+            }
+            return 'Navigate';
+        },
+        icon: ICON_WEB,
+        minimal: true,
+        input: z.object({ url: z.string().optional() }).partial().loose()
+    },
+    'pinchtab_screenshot': {
+        title: 'Screenshot',
+        icon: (size: number = 24, color: string = '#000') => <Ionicons name="camera-outline" size={size} color={color} />,
+        minimal: true,
+        input: z.object({}).partial().loose()
+    },
+    'pinchtab_action': {
+        title: (opts: { metadata: Metadata | null, tool: ToolCall }) => {
+            if (typeof opts.tool.input?.action === 'string') return opts.tool.input.action;
+            return 'Browser Action';
+        },
+        icon: (size: number = 24, color: string = '#000') => <Ionicons name="hand-left-outline" size={size} color={color} />,
+        minimal: true,
+        input: z.object({ action: z.string().optional() }).partial().loose()
+    },
+    'pinchtab_snapshot': {
+        title: 'Page Snapshot',
+        icon: ICON_READ,
+        minimal: true,
+        input: z.object({}).partial().loose()
+    },
+    'pinchtab_evaluate': {
+        title: 'Evaluate JS',
+        icon: ICON_TERMINAL,
+        minimal: true,
+        input: z.object({}).partial().loose()
+    },
+    'interactive_shell': {
+        title: (opts: { metadata: Metadata | null, tool: ToolCall }) => {
+            if (typeof opts.tool.input?.command === 'string') {
+                const cmd = opts.tool.input.command;
+                return cmd.length > 40 ? cmd.substring(0, 40) + '...' : cmd;
+            }
+            return 'Interactive Shell';
+        },
+        icon: ICON_TERMINAL,
+        minimal: true,
+        isMutable: true,
+        input: z.object({ command: z.string().optional() }).partial().loose(),
+        extractSubtitle: (opts: { metadata: Metadata | null, tool: ToolCall }) => {
+            if (typeof opts.tool.input?.command === 'string') return opts.tool.input.command;
+            return null;
+        }
     }
 } satisfies Record<string, {
     title?: string | ((opts: { metadata: Metadata | null, tool: ToolCall }) => string);

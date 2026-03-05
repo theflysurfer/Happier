@@ -455,6 +455,7 @@ export const ja: TranslationStructure = {
             claude: 'Claude',
             codex: 'Codex',
             gemini: 'Gemini',
+            pi: 'Pi',
         },
         model: {
             title: 'モデル',
@@ -479,6 +480,16 @@ export const ja: TranslationStructure = {
             gpt5Low: 'GPT-5 低',
             gpt5Medium: 'GPT-5 中',
             gpt5High: 'GPT-5 高',
+        },
+        piPermissionMode: {
+            title: 'PI PERMISSION MODE',
+            default: 'Default',
+            readOnly: 'Read Only',
+            safeYolo: 'Safe YOLO',
+            yolo: 'YOLO',
+            badgeReadOnly: 'Read Only',
+            badgeSafeYolo: 'Safe YOLO',
+            badgeYolo: 'YOLO',
         },
         geminiPermissionMode: {
             title: 'GEMINI権限モード',

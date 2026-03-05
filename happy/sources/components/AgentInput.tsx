@@ -65,7 +65,7 @@ interface AgentInputProps {
     };
     alwaysShowContextSize?: boolean;
     onFileViewerPress?: () => void;
-    agentType?: 'claude' | 'codex' | 'gemini';
+    agentType?: 'claude' | 'codex' | 'gemini' | 'pi';
     onAgentClick?: () => void;
     machineName?: string | null;
     onMachineClick?: () => void;
@@ -317,6 +317,7 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
     // Use metadata.flavor for existing sessions, agentType prop for new sessions
     const isCodex = props.metadata?.flavor === 'codex' || props.agentType === 'codex';
     const isGemini = props.metadata?.flavor === 'gemini' || props.agentType === 'gemini';
+    const isPi = props.metadata?.flavor === 'pi' || props.agentType === 'pi';
 
     // Profile data
     const profiles = useSetting('profiles');
@@ -568,7 +569,7 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
             }
             // Handle Shift+Tab for permission mode switching
             if (event.key === 'Tab' && event.shiftKey && props.onPermissionModeChange) {
-                const modeOrder: PermissionMode[] = isCodex
+                const modeOrder: PermissionMode[] = (isCodex || isGemini || isPi)
                     ? ['default', 'read-only', 'safe-yolo', 'yolo']
                     : ['default', 'acceptEdits', 'plan', 'bypassPermissions']; // Claude and Gemini share same modes
                 const currentIndex = modeOrder.indexOf(props.permissionMode || 'default');
@@ -648,9 +649,9 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
                                 {/* Permission Mode Section */}
                                 <View style={styles.overlaySection}>
                                     <Text style={styles.overlaySectionTitle}>
-                                        {isCodex ? t('agentInput.codexPermissionMode.title') : isGemini ? t('agentInput.geminiPermissionMode.title') : t('agentInput.permissionMode.title')}
+                                        {isCodex ? t('agentInput.codexPermissionMode.title') : isGemini ? t('agentInput.geminiPermissionMode.title') : isPi ? t('agentInput.piPermissionMode.title') : t('agentInput.permissionMode.title')}
                                     </Text>
-                                    {((isCodex || isGemini)
+                                    {((isCodex || isGemini || isPi)
                                         ? (['default', 'read-only', 'safe-yolo', 'yolo'] as const)
                                         : (['default', 'acceptEdits', 'plan', 'bypassPermissions'] as const)
                                     ).map((mode) => {
@@ -664,6 +665,11 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
                                             'read-only': { label: t('agentInput.geminiPermissionMode.readOnly') },
                                             'safe-yolo': { label: t('agentInput.geminiPermissionMode.safeYolo') },
                                             'yolo': { label: t('agentInput.geminiPermissionMode.yolo') },
+                                        } : isPi ? {
+                                            'default': { label: t('agentInput.piPermissionMode.default') },
+                                            'read-only': { label: t('agentInput.piPermissionMode.readOnly') },
+                                            'safe-yolo': { label: t('agentInput.piPermissionMode.safeYolo') },
+                                            'yolo': { label: t('agentInput.piPermissionMode.yolo') },
                                         } : {
                                             default: { label: t('agentInput.permissionMode.default') },
                                             acceptEdits: { label: t('agentInput.permissionMode.acceptEdits') },
@@ -961,6 +967,11 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
                                             props.permissionMode === 'read-only' ? t('agentInput.geminiPermissionMode.badgeReadOnly') :
                                                 props.permissionMode === 'safe-yolo' ? t('agentInput.geminiPermissionMode.badgeSafeYolo') :
                                                     props.permissionMode === 'yolo' ? t('agentInput.geminiPermissionMode.badgeYolo') : ''
+                                    ) : isPi ? (
+                                        props.permissionMode === 'default' ? t('agentInput.piPermissionMode.default') :
+                                            props.permissionMode === 'read-only' ? t('agentInput.piPermissionMode.badgeReadOnly') :
+                                                props.permissionMode === 'safe-yolo' ? t('agentInput.piPermissionMode.badgeSafeYolo') :
+                                                    props.permissionMode === 'yolo' ? t('agentInput.piPermissionMode.badgeYolo') : ''
                                     ) : (
                                         props.permissionMode === 'default' ? t('agentInput.permissionMode.default') :
                                             props.permissionMode === 'acceptEdits' ? t('agentInput.permissionMode.badgeAcceptAllEdits') :
@@ -1182,7 +1193,7 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
                                             fontWeight: '600',
                                             ...Typography.default('semiBold'),
                                         }}>
-                                            {props.agentType === 'claude' ? t('agentInput.agent.claude') : props.agentType === 'codex' ? t('agentInput.agent.codex') : t('agentInput.agent.gemini')}
+                                            {props.agentType === 'claude' ? t('agentInput.agent.claude') : props.agentType === 'codex' ? t('agentInput.agent.codex') : props.agentType === 'pi' ? t('agentInput.agent.pi') : t('agentInput.agent.gemini')}
                                         </Text>
                                     </Pressable>
                                 )}

@@ -1,394 +1,364 @@
-# Plan: Nettoyage du repo Happy + Intégration Pi
+# Plan détaillé — Audit & mise à niveau Happy
 
-## 1. État des lieux
+## Contexte
 
-### Structure actuelle du repo
+Le projet Happy (fork `theflysurfer/Happier` d'upstream `slopus/happy`) est une app React Native/Expo (Android, iOS, Web) servant de frontend mobile/web pour des agents CLI (Claude, Codex, Gemini, Pi). Le fork a 55 commits custom mais **1586 commits de retard** sur upstream. L'intégration Pi est incomplète côté UI. La documentation est à jour partiellement.
 
-Le repo **theflysurfer/Happier** (fork de **slopus/happy**) contient :
-
-| Dossier | Description | Fichiers trackés |
-|---------|-------------|-----------------|
-| `happy/` | App React Native + Expo (= upstream `packages/happy-app`) | 1184 |
-| `happy-cli/` | CLI wrapper multi-agent (= upstream `packages/happy-cli`) | 234 |
-| Root | Fichiers de config + déchets | ~10 |
-
-**Upstream** est un **monorepo** avec 5 packages (`happy-app`, `happy-cli`, `happy-server`, `happy-wire`, `happy-agent`). Notre fork a extrait `happy-app` → `happy/` et `happy-cli` → `happy-cli/` en perdant la structure monorepo.
-
-### Branches
-
-| Branche | Contenu |
-|---------|---------|
-| `master` | Notre fork avec ~30 commits custom |
-| `upstream-snapshot` | Copie exacte de upstream/main |
-| `upstream/main` | Remote upstream (slopus/happy) |
+Les 4 axes de travail :
+1. Sync upstream
+2. Features custom en production
+3. CLAUDE.md à jour
+4. Intégration Pi complète
 
 ---
 
-## 2. Code mort identifié
+## 1. Sync avec upstream
 
-### 2.1 Fichiers racine à supprimer (non trackés ou gitignored)
+### État actuel
+- **Notre branche** : `master` (55 commits custom)
+- **Upstream** : `upstream/main` (1586 commits d'avance, dernier : 25 fév 2026)
+- **Fork point** : très ancien
 
-| Fichier | Taille | Raison |
-|---------|--------|--------|
-| `C:Devhbactivity_top.txt` | 51KB | Dump adb malformé |
-| `C:Devhblogcat_recent.txt` | 73KB | Dump adb malformé |
-| `wa-logs.txt` | 1.5MB | Logs WhatsApp debug |
-| `mcp-logs.txt` | 9KB | Logs MCP debug |
-| `fix_send.py` | 1KB | Script one-shot |
-| `patch_default.py` | 1KB | Script one-shot |
-| `patch_layout.py` | 3KB | Script one-shot |
-| `patch_sessionview.py` | 2KB | Script one-shot |
-| `patch_storage_zen.py` | 2KB | Script one-shot |
-| `happy.jks` | 2KB | Keystore (SENSIBLE - déjà gitignored) |
-| `logs/` | vide | Dossier vide |
-| `tmp/` | vide | Dossier vide |
+### Features upstream manquantes (majeures)
 
-**Action** : Supprimer tous ces fichiers du disque. Déjà dans `.gitignore`, donc pas trackés.
+| Upstream feature | Commits | Impact |
+|---|---|---|
+| `happy-wire` — nouveau protocole session | `54d00311` | Nouveau package, refactor sync |
+| v3 reliable HTTP messages API | `bf9f0aa7` | Meilleure fiabilité |
+| `AsyncLock` pour sérialisation messages | `bb4f9abf` | Fix race conditions |
+| Sandbox/Yolo permission refactor | `a07bc160`, `8664fb13` | UX modes |
+| Session protocol cuid2 IDs | `011493d6` | Nouveaux IDs |
+| Subagent lifecycle protocol | `36bcc1cb` | Multi-agent |
+| Model/mode metadata-driven selection | `bb7a1173` | Modèles |
+| Path normalization Windows fix | `0799ac76` | Bug fix |
+| `Remove experimental zen todo paths` | `e07ff478` | **Upstream a supprimé `-zen`** |
+| PGlite standalone server | `351f7af5` | Backend embeddé |
+| ACP generic runner | `3ef6aa25` | Agents |
+| Agent skills (browser, terminal) | `bb7a1173` | Nouvelles features |
 
-### 2.2 Code mort dans `happy/` (trackés dans git)
+### Plan de merge
 
-| Chemin | Fichiers | Raison |
-|--------|----------|--------|
-| `happy/sources/-zen/` | 10 fichiers | Feature Zen supprimée upstream, nous l'avons gardée dans un dossier prefixé `-`. Pas importée. |
-| `happy/sources/-session/SessionView.tsx` | 1 fichier | Ancienne SessionView, remplacée. Existe aussi upstream dans `-session/`. |
-| `happy/sources/trash/` | 3 fichiers | Dossier "poubelle" explicite avec des fichiers test. Non tracké. |
-| `happy/screenshots/` | 38 fichiers (57MB) | Screenshots de test/debug. Lourd. |
+- [ ] **Step 1** : Créer une branche `merge-upstream` depuis `master`
+- [ ] **Step 2** : `git merge upstream/main` — résoudre les conflits
+  - Conflits attendus : `typesRaw.ts` (nos ajouts ACP Pi vs refactors upstream), `AgentInput.tsx` (nos modifs image upload vs upstream), `_default.ts` (traductions), stubs `-zen` (upstream les supprime)
+- [ ] **Step 3** : Supprimer les stubs `sources/-zen/` (upstream a supprimé les routes)
+- [ ] **Step 4** : Vérifier que nos 55 commits custom sont préservés
+- [ ] **Step 5** : `yarn typecheck` — résoudre les erreurs
+- [ ] **Step 6** : Tester web + Android
+- [ ] **Step 7** : Push + OTA
 
-**Actions** :
-- [ ] `git rm -r happy/sources/-zen/` — dead code, jamais importé
-- [ ] Garder `happy/sources/-session/` — existe aussi upstream, on suit leur convention
-- [ ] Supprimer `happy/sources/trash/` du disque (non tracké)
-- [ ] Évaluer si `happy/screenshots/` (57MB trackés) doivent rester — **recommandation : déplacer dans un dossier non tracké ou LFS**
+### Fichiers à conflits probables
+- `happy/sources/sync/typesRaw.ts` — notre ACP Pi schema vs upstream refactors
+- `happy/sources/components/AgentInput.tsx` — image upload + Pi vs upstream
+- `happy/sources/text/_default.ts` — nos traductions image/Pi vs upstream
+- `happy/sources/text/translations/*.ts` — idem
+- `happy/sources/components/tools/knownTools.tsx` — nos tools vs upstream
+- `happy/package.json` — dépendances
 
-### 2.3 Binaires lourds dans `happy-cli/` (trackés, 95MB)
-
-| Chemin | Taille | Contenu |
-|--------|--------|---------|
-| `happy-cli/tools/archives/` | 95MB | Archives tar.gz de ripgrep + difftastic pour toutes plateformes |
-
-C'est du code upstream — on ne touche pas, mais c'est à noter pour le poids du repo.
-
-### 2.4 Fichiers racine non trackés à nettoyer
-
-| Chemin | Action |
-|--------|--------|
-| `docs/` (racine) | Contient nos rapports de session + docs build. **Garder** mais tracker ou exclure explicitement |
-| `PLAN.md` (racine) | Ce fichier. Non tracké. Supprimer après implémentation. |
+### Issue GitHub
+- [ ] Créer issue #815 : `chore: merge upstream/main (1586 commits behind)`
 
 ---
 
-## 3. Dossiers de compilation `C:\Dev` et `C:\h` (30 GB)
+## 2. Features custom en production
 
-### Pourquoi ces dossiers existent
+### Vérification : toutes les features sont dans l'OTA `preview`
 
-Le chemin OneDrive (`C:\Users\julien\OneDrive\Coding\_Projets de code\2026.01 Happy (Claude Code remote)\happy`) contient des **espaces et parenthèses** qui cassent CMake/ninja quand les paths absolus dépassent Windows MAX_PATH (260 chars). La solution : copier le projet dans `C:\Dev\happy-v6` et utiliser une **junction NTFS** `C:\h → C:\Dev\happy-v6` pour raccourcir encore les paths Gradle.
+L'OTA `ddcefa8f` (poussée le 5 mars 2026) contient **tous les 55 commits custom** sur la branche `preview`. Runtime version `18`.
 
-### Inventaire complet de `C:\Dev`
+| Feature | Commit | OTA | Vérifié |
+|---|---|---|---|
+| Image upload web+Android | `2fb21d90` | ✅ | Testé via Hydra (bouton visible, paste fonctionne) |
+| Pi provider ACP enum | `dc75fd8c` | ✅ | Dans `typesRaw.ts:213` |
+| Pi CLI backend | `f9fdea84` | ✅ | `happy-cli/src/pi/` |
+| TaskCreate/Update/List views | `6d7ee97d` | ✅ | Dans `knownTools.tsx` + `TaskOperationView.tsx` |
+| Memory monitor | `d2d479a0` | ✅ | RAM indicator dans AgentInput |
+| Markdown transcript preview | `462634fc` | ✅ | |
+| Session cache MMKV | `c229a15d` | ✅ | |
+| File Manager (Browse/Changes) | `6ec7f3b6` | ✅ | |
+| Plannotator | `636d5118` | ✅ | |
+| Clickable file paths | `0dffc683` | ✅ | |
+| i18n 9 langues | `1921cb88` | ✅ | |
+| 15+ bug fixes | divers | ✅ | |
+| -zen stubs | `82cb2b98` | ✅ | **À supprimer après merge upstream** |
 
-| Dossier | Taille | Contenu | Statut |
-|---------|--------|---------|--------|
-| `C:\Dev\android\` | **11 GB** | Android SDK (platforms, NDK, cmake, emulator, build-tools) | ✅ **Garder** — nécessaire pour les builds locaux |
-| `C:\Dev\happy-v6\` | **4.2 GB** | Copie de travail pour build Android (= `C:\h` via junction) | ✅ **Garder** — c'est le build dir actif |
-| `C:\Dev\happy-build\` | **7.6 GB** | Ancienne copie de build (même remote, même commit que happy/) | ❌ **SUPPRIMER** — doublon obsolète |
-| `C:\Dev\happy\` | **1.5 GB** | Ancienne copie (remote: `happy-claude-client`, pas Happier) | ❌ **SUPPRIMER** — ancien repo, plus utilisé |
-| `C:\Dev\hb\` | **5.7 GB** | Encore une copie (même remote `happy-claude-client`) | ❌ **SUPPRIMER** — doublon |
-| `C:\Dev\null` | 0 bytes | Fichier parasite (redirect stdout vers `C:\Dev\null` au lieu de `/dev/null`) | ❌ **SUPPRIMER** |
-| **Total** | **30 GB** | | **~15 GB récupérables** |
+### ⚠️ Problème : branche OTA
+L'OTA est poussée sur `--branch preview` mais l'APK installé utilise peut-être le channel `production`. Vérification nécessaire :
 
-### Détail des doublons
+- [ ] Vérifier dans `app.config.js` quel channel l'APK utilise
+- [ ] Si `production`, pousser aussi sur `--branch production`
 
-Les 3 dossiers `C:\Dev\happy`, `C:\Dev\happy-build`, `C:\Dev\hb` pointent tous vers le **même repo obsolète** `theflysurfer/happy-claude-client.git` (commit `30357f9` du 26 jan). Ce repo est l'ancien fork standalone, remplacé par `theflysurfer/Happier.git` (fork du monorepo slopus/happy). Ils contiennent chacun d'énormes `node_modules` et artefacts de build :
+---
 
-| Dossier | node_modules | android/app/build | Total gaspillé |
-|---------|-------------|-------------------|----------------|
-| `C:\Dev\happy` | 1.4 GB | 23 MB | ~1.5 GB |
-| `C:\Dev\happy-build` | 5.0 GB | 2.4 GB | ~7.6 GB |
-| `C:\Dev\hb` | 4.5 GB | 1.5 GB | ~5.7 GB |
+## 3. CLAUDE.md — Mises à jour
 
-### Junction `C:\h`
+### Sections à ajouter/modifier
 
+#### 3a. Section "Pi Agent Integration" (NOUVELLE)
+- [ ] Ajouter après "Project Context" :
+
+```markdown
+## Pi Agent Integration
+
+Pi (`@mariozechner/pi-coding-agent`) is the 4th agent backend in Happy, alongside Claude, Codex, and Gemini.
+
+### CLI
+- Entry point: `happy-cli/src/pi/runPi.ts`
+- Backend: `happy-cli/src/pi/piBackend.ts` — wraps Pi SDK in-process
+- Flavor: `'pi'` in session metadata
+- Command: `happy pi` to start Pi mode
+
+### App UI — Current Limitations
+- `agentType` enum in `AgentInput.tsx` does NOT include `'pi'` yet
+- No Pi-specific icon in `Avatar.tsx` (falls back to Claude icon)
+- No Pi permission modes in settings overlay
+- Pi tools appear as generic blocks (no entries in `knownTools.tsx`)
+
+### ACP Message Flow
+Pi CLI → `session.sendAgentMessage('pi', ...)` → Happy server → mobile app
+Message types: `message`, `tool-call`, `tool-result`, `thinking`, `file-edit`, `task_started`, `task_complete`, `turn_aborted`
 ```
-C:\h → C:\Dev\happy-v6  (junction NTFS)
+
+#### 3b. Section "Image Upload" (NOUVELLE)
+- [ ] Ajouter :
+
+```markdown
+## Image Upload
+
+Multimodal image support across all platforms.
+
+### Features
+- **Android**: Gallery picker + Camera (action sheet on button tap)
+- **Web**: Gallery picker button + Drag & drop + Clipboard paste (Ctrl+V)
+- **Preview**: Thumbnail row with remove button, up to 4 images
+- **Processing**: Canvas API on web, expo-image-manipulator on native
+- **Encoding**: Base64, max 2048px, JPEG 80% quality
+
+### Key Files
+- `sources/components/ImageUpload/useImagePicker.ts` — core hook
+- `sources/components/ImageUpload/ImageDropZone.tsx` — web drag & drop + paste
+- `sources/components/ImageUpload/ImagePreviewRow.tsx` — thumbnail UI
+- `sources/components/AgentInput.tsx` — button + drop zone wrapper
+- `sources/-session/SessionView.tsx` — wiring
 ```
 
-C'est le seul dossier de build actif. Le plugin Gradle `withWindowsPathFix.js` réécrit tous les paths pour passer par `C:\h` au lieu du path réel, contournant MAX_PATH.
+#### 3c. OTA section update
+- [ ] Fix la section OTA pour documenter le bypass typecheck :
 
-**⚠️ Piège critique** : `C:\h` doit TOUJOURS pointer vers `C:\Dev\happy-v6`, PAS vers le dossier OneDrive. Sinon CMake cherche `node_modules` au mauvais endroit → build silencieusement cassé.
+```markdown
+### OTA Push (bypassing typecheck)
 
-### Workflow de sync OneDrive → C:\Dev\happy-v6
-
-Le code source vit dans OneDrive (versionné git). Pour builder, on copie vers `C:\Dev\happy-v6` :
+`yarn ota` runs typecheck which fails on pre-existing errors (-zen modules, spec files).
+To push directly:
 
 ```bash
-PROJ="C:\Users\julien\OneDrive\Coding\_Projets de code\2026.01 Happy (Claude Code remote)\happy"
-powershell -Command "robocopy '$PROJ' 'C:\Dev\happy-v6' /E /XD node_modules android ios .expo screenshots .git /XF build_log.txt tsconfig.tsbuildinfo /NFL /NDL /NJH /NJS /nc /ns /np"
+# Create .bat file for interactive_shell compatibility
+npx eas-cli@latest update --branch preview --message "description"
 ```
 
-Puis `yarn install` + `prebuild` + `gradlew assembleRelease` dans `C:\Dev\happy-v6`.
-
-### Cache Gradle global
-
-| Chemin | Taille | Action |
-|--------|--------|--------|
-| `~/.gradle/caches/` | **15 GB** | Peut être purgé partiellement (`gradle --stop && rm -rf ~/.gradle/caches/transforms-*`) |
-| `~/.gradle/wrapper/` | 146 MB | Garder |
-
-### Problèmes de build rencontrés (historique documenté)
-
-| Problème | Cause | Solution | Statut |
-|----------|-------|----------|--------|
-| **260-char path limit** | CMake/ninja paths trop longs | Junction `C:\h` + plugin `withWindowsPathFix.js` | ✅ Résolu |
-| **libsodium.so "not a regular file"** | NTFS reparse tags OneDrive confondent Java `Files.isRegularFile()` | Patch copie .so dans `C:/tmp/ls-lib/` | ✅ Résolu |
-| **libsodium 5.7MB patch échoue** | `patch-package` ne gère pas les diffs binaires sur Windows | 3 fichiers à patcher manuellement après `yarn install` | ✅ Contournement |
-| **Gradle daemon crash (EXCEPTION_ACCESS_VIOLATION)** | 4 ABIs + Xmx2048m + `gradle-fileevents.dll` | `arm64-v8a` only + Xmx4096m + `--no-watch-fs` | ✅ Résolu |
-| **prebuild --clean reset gradle.properties** | Expo remet Xmx2048m et 4 ABIs par défaut | Toujours re-éditer après prebuild | ⚠️ Piège récurrent |
-| **MetaspaceSize OOM (VPS)** | lint analyzer dépasse 512m | `-XX:MaxMetaspaceSize=1024m` + skip lint | ✅ Résolu |
-| **Node.js OOM** | `NODE_OPTIONS=--max-old-space-size=512` trop bas | `--max-old-space-size=8192` dans profil PowerShell | ✅ Résolu |
-| **react-native-audio-api path explosion** | Module inutilisé sur Android qui alourdit CMake | Exclu via `react-native.config.js` | ✅ Résolu |
-
-### VPS comme alternative (recommandé pour les builds)
-
-Le VPS Hostinger (`automation@69.62.108.82`) est **dramatiquement plus simple** :
-- Pas de workaround 260-char
-- Pas de junctions
-- Pas de patch libsodium manuel
-- `patch-package` fonctionne normalement
-- Build cached en <1 min (vs 5-10 min Windows)
-
-### Actions de nettoyage C:\Dev
-
-```powershell
-# 1. Supprimer les 3 doublons obsolètes (~15 GB récupérés)
-Remove-Item -Recurse -Force "C:\Dev\happy"       # ancien repo happy-claude-client
-Remove-Item -Recurse -Force "C:\Dev\happy-build"  # doublon de build
-Remove-Item -Recurse -Force "C:\Dev\hb"           # encore un doublon
-
-# 2. Supprimer le fichier parasite
-Remove-Item "C:\Dev\null"
-
-# 3. Nettoyer le cache Gradle (optionnel, ~5-10 GB récupérables)
-# Attention : le prochain build sera plus long
-gradle --stop
-Remove-Item -Recurse -Force "$env:USERPROFILE\.gradle\caches\transforms-*"
-Remove-Item -Recurse -Force "$env:USERPROFILE\.gradle\caches\journal-*"
-
-# 4. Vérifier la junction
-Get-Item -Force 'C:\h' | Select-Object -ExpandProperty Target
-# Doit afficher : C:\Dev\happy-v6
+Note: EAS requires clean git tree (`requireCommit: true`). It will prompt to commit dirty files.
 ```
 
-**Résultat attendu** : `C:\Dev` passe de **30 GB** à ~**15 GB** (Android SDK 11 GB + happy-v6 4.2 GB).
+#### 3d. Upstream sync status
+- [ ] Ajouter section :
+
+```markdown
+## Upstream Sync Status
+
+- **Fork**: `theflysurfer/Happier` (branch `master`)
+- **Upstream**: `slopus/happy` (branch `main`)
+- **Status**: 1586 commits behind, 55 commits ahead (as of March 2026)
+- **-zen stubs**: Temporary stubs in `sources/-zen/` for build compatibility. Upstream has REMOVED these routes — stubs should be deleted after merging upstream.
+```
+
+### Fichier à modifier
+- `happy/CLAUDE.md`
 
 ---
 
-## 4. Les deux repos GitHub
+## 4. Intégration Pi dans Happy — Complétion
 
-### Historique
+### 4a. Pi dans `agentType` enum et détection UI
 
-| Repo | URL | Usage | Statut |
-|------|-----|-------|--------|
-| `theflysurfer/happy-claude-client` | ancien fork standalone de l'app seule | `C:\Dev\happy`, `C:\Dev\hb`, `C:\Dev\happy-build` | ❌ **Obsolète** — remplacé par Happier |
-| `theflysurfer/Happier` | fork du monorepo `slopus/happy` | OneDrive (repo principal) | ✅ **Actif** |
+**Fichiers à modifier** :
+- `happy/sources/components/AgentInput.tsx`
 
-Le repo `happy-claude-client` est l'ancien fork d'avant la restructuration monorepo upstream. Il n'a plus de raison d'exister. Les 3 copies dans `C:\Dev` en sont des clones.
+**Changements** :
+- [ ] Ajouter `'pi'` à `agentType?: 'claude' | 'codex' | 'gemini' | 'pi'` (ligne 68)
+- [ ] Ajouter `const isPi = props.metadata?.flavor === 'pi' || props.agentType === 'pi';` (après ligne 319)
+- [ ] Ajouter label Pi dans le bouton agent (ligne 1185) : `props.agentType === 'pi' ? t('agentInput.agent.pi') : ...`
+- [ ] Ajouter Pi permission modes (Pi utilise les mêmes que Codex : `default`, `read-only`, `safe-yolo`, `yolo`) — réutiliser la branche `isCodex || isGemini` en ajoutant `|| isPi`
 
-**Action** : Archiver `theflysurfer/happy-claude-client` sur GitHub (Settings → Archive).
+**Réutilisation existante** :
+- Le pattern `isCodex`/`isGemini` se répète ~15 fois dans le fichier. Pi se comporte comme Codex pour les modes de permission → ajouter `isPi` aux conditions existantes.
 
----
+### 4b. Traduction `agentInput.agent.pi`
 
-## 5. Clarification des branches upstream/main
+**Fichiers à modifier** :
+- `happy/sources/text/_default.ts` — ajouter `pi: 'Pi'` dans `agentInput.agent`
+- `happy/sources/text/translations/*.ts` (9 fichiers) — ajouter `pi: 'Pi'`
 
-### Problème actuel
+### 4c. Icône Pi dans Avatar
 
-La structure de notre fork diffère de upstream :
-- **Upstream** : monorepo `packages/{happy-app,happy-cli,happy-server,happy-wire,happy-agent}`
-- **Notre fork** : flat `happy/` + `happy-cli/`
+**Fichiers à modifier** :
+- `happy/sources/components/Avatar.tsx`
+- `happy/sources/assets/images/` — ajouter `icon-pi.png` (+ @2x, @3x)
 
-Cela rend les merges upstream impossibles directement (1680 fichiers changés dans le diff).
+**Changements** :
+- [ ] Créer une icône Pi (le logo Pi : π stylisé, ou le logo officiel de Pi agent)
+- [ ] Ajouter dans `flavorIcons` (ligne 22) : `pi: require('@/assets/images/icon-pi.png')`
 
-### Plan de résolution des branches
-
-#### Option A : Garder la structure plate (recommandé)
-
-1. **`master`** = notre branche de travail (structure plate)
-2. **`upstream-snapshot`** = snapshot de upstream/main pour référence
-3. Merge upstream manuellement : cherry-pick les commits intéressants, pas de merge automatique
-
-**Workflow pour syncer avec upstream :**
-```bash
-# Mettre à jour upstream
-git fetch upstream
-
-# Voir les nouveaux commits
-git log upstream-snapshot..upstream/main --oneline
-
-# Cherry-pick ce qui nous intéresse (en adaptant les paths)
-# packages/happy-app/... → happy/...
-# packages/happy-cli/... → happy-cli/...
+**Alternative si pas d'icône** : utiliser une icône Ionicons/Octicons existante comme placeholder :
+```tsx
+// Temporaire — utiliser emoji ou icône générique
+pi: require('@/assets/images/icon-claude.png'), // TODO: replace with Pi icon
 ```
 
-#### Option B : Revenir au monorepo (plus de travail, meilleure compatibilité)
+### 4d. Session info page — Pi label
 
-Restructurer notre repo pour matcher upstream. Trop de travail pour le bénéfice.
+**Fichier** : `happy/sources/app/(app)/session/[id]/info.tsx`
 
-**Recommandation : Option A** — garder la structure plate, documenter le workflow de sync.
+- [ ] Ajouter ligne 466.5 : `if (flavor === 'pi') return 'Pi';`
 
----
+### 4e. ToolView — Pi tools non reconnus
 
-## 6. Intégration de Pi comme backend dans happy-cli
+**Problème** : Dans `ToolView.tsx` ligne 79-81, les outils inconnus sont masqués pour Gemini. Pour Pi, les outils inconnus sont affichés mais sans icône/titre utile.
 
-### Architecture actuelle de happy-cli
+**Fichier** : `happy/sources/components/tools/ToolView.tsx`
 
-Happy CLI supporte **3 agents** avec un pattern clair :
+- [ ] Ajouter détection Pi (ligne 82) : `const isPi = props.metadata?.flavor === 'pi';`
+- [ ] Pour Pi, les outils inconnus doivent rester visibles (pas `minimal = true`)
 
-```
-happy [claude]   → runClaude()   → SDK @anthropic-ai/claude-code
-happy codex      → runCodex()    → CodexMcpClient (MCP stdio)
-happy gemini     → runGemini()   → ACP backend (Agent Control Protocol)
-```
+### 4f. Pi tools dans `knownTools.tsx` — Les plus importants
 
-### Ce que Pi expose (SDK `@mariozechner/pi-coding-agent`)
+**Fichier** : `happy/sources/components/tools/knownTools.tsx`
 
-| Primitive | API Pi |
-|-----------|--------|
-| Créer session | `createAgentSession({ sessionManager: SessionManager.inMemory() })` |
-| Envoyer prompt | `session.prompt(text)` |
-| Streamer events | `session.subscribe(listener)` — `text_delta`, `thinking_delta`, `tool_execution_*`, etc. |
-| Annuler | `session.abort()` |
-| Cleanup | `session.dispose()` |
-| Outils | Built-in (read, bash, edit, write) + custom tools + extensions |
-| Skills/Extensions | Chargement automatique ou configurable via `ResourceLoader` |
-| Auth | `AuthStorage.create()` — lit `~/.pi/agent/auth.json` ou env vars |
+Outils Pi envoyés par `piBackend.ts` via `tool_execution_start` avec `event.toolName`. Les noms correspondent aux outils Pi du SDK. Voici ceux à ajouter, par ordre de priorité :
 
-### Verdict : **Intégration aisée** ✅
+#### Priorité 1 — Outils natifs Pi SDK (minuscules)
 
-Pi est **plus simple** que les 3 agents existants :
-- **In-process** (pas de process spawn comme Claude, pas de MCP stdio comme Codex, pas de HTTP comme Gemini)
-- SDK TypeScript natif avec exactement les primitives nécessaires
-- Event system qui mappe parfaitement sur les messages Happy
+Les outils Pi natifs du SDK (`@mariozechner/pi-coding-agent` v0.55.1) utilisent des noms **en minuscules** :
 
-### Plan d'implémentation
+| Outil Pi SDK | Existe dans `knownTools` ? | Action |
+|---|---|---|
+| `read` | ✅ déjà présent (entrée `read` pour Gemini) | Rien |
+| `bash` | ❌ (`Bash` existe mais pas `bash`) | **Ajouter** entrée `bash` |
+| `edit` | ✅ déjà présent (entrée `edit` pour Gemini) | Rien |
+| `write` | ❌ (`Write` existe mais pas `write`) | **Ajouter** entrée `write` |
+| `grep` | ❌ (`Grep` existe mais pas `grep`) | **Ajouter** entrée `grep` |
+| `find` | ❌ pas d'entrée `find` | **Ajouter** entrée `find` |
+| `ls` | ❌ (`LS` existe mais pas `ls`) | **Ajouter** entrée `ls` |
+| `exit_plan_mode` | ✅ déjà présent | Rien |
 
-#### Phase 1 : `src/pi/` dans happy-cli (~500 lignes, ~1 jour)
+**Changements** dans `knownTools.tsx` :
+- [ ] Ajouter 5 entrées minuscules (`bash`, `write`, `grep`, `find`, `ls`) en copiant la logique des entrées majuscules existantes (`Bash`, `Write`, `Grep`, etc.) et en adaptant les champs `input` au format Pi (ex: Pi utilise `path` au lieu de `file_path`, `command` au lieu de tableau)
 
-##### 1.1 `src/pi/piBackend.ts` — Wrapper SDK (~100 lignes)
+Schemas Pi (du SDK `dist/core/tools/index.d.ts`) :
+- `bash` : `{ command: string, timeout?: number }`
+- `write` : `{ path: string, content: string }`
+- `grep` : `{ pattern: string, path?: string, glob?: string, ignoreCase?: boolean, literal?: boolean, context?: number, limit?: number }`
+- `find` : `{ pattern: string, path?: string, limit?: number }`
+- `ls` : `{ path?: string, limit?: number }`
+- `read` : `{ path: string, offset?: number, limit?: number }` (déjà couvert par l'entrée Gemini `read`)
+- `edit` : `{ path: string, oldText: string, newText: string }` (déjà couvert par l'entrée Gemini `edit`)
 
-```typescript
-import { createAgentSession, SessionManager, AuthStorage, ModelRegistry } from "@mariozechner/pi-coding-agent";
+#### Priorité 2 — Outils d'extensions Pi (dynamiques)
 
-export class PiBackend {
-  private session: AgentSession;
-  
-  async create(opts: { cwd: string }): Promise<void> {
-    const authStorage = AuthStorage.create();
-    const modelRegistry = new ModelRegistry(authStorage);
-    const { session } = await createAgentSession({
-      sessionManager: SessionManager.inMemory(),
-      authStorage,
-      modelRegistry,
-      cwd: opts.cwd,
-    });
-    this.session = session;
-  }
-  
-  async prompt(text: string): Promise<void> { await this.session.prompt(text); }
-  async abort(): Promise<void> { await this.session.abort(); }
-  subscribe(listener: (event) => void): () => void { return this.session.subscribe(listener); }
-  dispose(): void { this.session.dispose(); }
+Les extensions Pi (chargées par `ExtensionRunner`) ajoutent des outils custom. Leurs noms sont **dynamiques** et dépendent de la config utilisateur. Les plus courants dans l'écosystème de Julien :
+
+- `fast_search_*` (13 outils) — fast-search extension
+- `pinchtab_*` (11 outils) — Pinchtab browser automation
+- `hydra_*` — HydraSpecter browser automation
+- `web_search`, `web_fetch` — web search extension
+- `interactive_shell` — interactive shell extension
+
+**Approche** : Plutôt qu'ajouter des entrées fixes pour chaque outil d'extension, ajouter une **détection par préfixe** dans `ToolView.tsx` :
+
+```tsx
+// Pi extension tools — detect by prefix and render with appropriate icons
+if (!knownTool && isPi) {
+    const name = tool.name;
+    if (name.startsWith('fast_search_')) { toolTitle = name.replace('fast_search_', '').replace(/_/g, ' '); icon = ICON_SEARCH; }
+    else if (name.startsWith('pinchtab_') || name.startsWith('hydra_')) { toolTitle = name.replace(/^(pinchtab|hydra)_/, ''); icon = ICON_WEB; }
+    else if (name === 'web_search' || name === 'web_fetch') { icon = ICON_WEB; }
+    else if (name === 'interactive_shell') { icon = ICON_TERMINAL; }
+    // Don't hide unknown Pi tools (unlike Gemini)
 }
 ```
 
-##### 1.2 `src/pi/runPi.ts` — Point d'entrée (~300 lignes)
+- [ ] Ajouter cette détection par préfixe dans `ToolView.tsx` (après ligne 82)
 
-Calqué sur `runGemini.ts` :
-1. Auth + machine setup (API Happy)
-2. Créer session Happy (flavor: `'pi'`)
-3. Démarrer Happy MCP server (pour `change_title`, etc.)
-4. Créer PiBackend
-5. Boucle : messages mobile → `session.prompt()` → subscribe events → forward au mobile
-6. Cleanup
+#### Priorité 3 — MCP tools
 
-##### 1.3 Event mapping Pi → Happy messages
+Les outils MCP (`mcp__*`) sont déjà gérés par la détection `tool.name.startsWith('mcp__')` dans `ToolView.tsx` ligne 99. Rien à faire.
 
-| Événement Pi SDK | Message Happy (mobile) |
-|---|---|
-| `message_update` + `text_delta` | `{ type: 'message', delta }` |
-| `message_update` + `thinking_delta` | `{ type: 'thinking', text }` |
-| `tool_execution_start` | `{ type: 'tool-call', name, callId }` |
-| `tool_execution_end` | `{ type: 'tool-result', callId, output }` |
-| `agent_start` | `{ type: 'task_started' }` |
-| `agent_end` | `{ type: 'task_complete' }` |
+### 4g. Registre de vues tool (`_all.tsx`)
 
-#### Phase 2 : Wiring CLI (~25 lignes)
+Pour la plupart des outils Pi, la vue par défaut (Input/Output JSON) suffit. Pas besoin de vues custom pour l'instant, sauf potentiellement :
 
-- `src/index.ts` : ajouter `case 'pi'` → `import('@/pi/runPi')`
-- `BackendFlavor` : ajouter `'pi'`
-- Optionnel : `src/ui/ink/PiDisplay.tsx` (~50 lignes)
+- [ ] `interactive_shell` — pourrait avoir une vue terminal-like (future)
+- [ ] `hydra_screenshot` / `pinchtab_screenshot` — pourrait afficher l'image inline (future)
 
-#### Phase 3 : App mobile (happy/)
+### 4h. Pi dans `SessionView.tsx`
 
-L'app doit reconnaître `flavor: 'pi'` :
-- Logo/icône Pi
-- Parser les messages (même format que les autres)
-- Bouton pour lancer des sessions Pi
+**Fichier** : `happy/sources/-session/SessionView.tsx`
 
-### Avantages vs autres agents
+- [ ] Ajouter `const isPiSession = session.metadata?.flavor === 'pi';` (après ligne 175)
+- [ ] Pi n'a pas de model selector → pas de changement nécessaire (le mode par défaut suffit)
 
-| Aspect | Claude | Codex | Gemini | **Pi** |
-|--------|--------|-------|--------|--------|
-| Exécution | Process spawn | MCP stdio | ACP HTTP | **In-process** |
-| Complexité | Haute | Moyenne | Haute | **Faible** |
-| Session tracking | Hooks + watcher | MCP session | ACP session | **SDK events** |
-| Modèles | Claude only | OpenAI only | Gemini only | **Multi-provider** |
+### 4i. `PermissionFooter.tsx` — Pi detection
 
-### Points d'attention
+**Fichier** : `happy/sources/components/tools/PermissionFooter.tsx`
 
-1. **Dépendance npm** : `@mariozechner/pi-coding-agent` à ajouter au `package.json`
-2. **Auth** : Pi lit ses propres clés (`~/.pi/agent/auth.json`). Pas besoin de gérer ça côté Happy.
-3. **Extensions/Skills** : En mode Happy, limiter via `ResourceLoader` custom (pas besoin de charger 71 skills)
-4. **Multi-provider** : Pi supporte Anthropic, OpenAI, Google, etc. — l'app pourrait exposer le choix du modèle
+- [ ] Ligne 31 : ajouter `|| metadata?.flavor === 'pi'` à la condition `isCodex`
+  ```tsx
+  const isCodex = metadata?.flavor === 'codex' || metadata?.flavor === 'pi' || toolName.startsWith('Codex');
+  ```
 
 ---
 
-## 7. Actions immédiates (nettoyage)
+## Vérification end-to-end
 
-### À exécuter maintenant
+### Tests web (via Hydra/Expo Web)
+- [ ] Lancer `expo start --web` (via `.bat` workaround)
+- [ ] Ouvrir une session Pi → vérifier icône Pi
+- [ ] Vérifier que les outils Pi ont des titres/icônes corrects (pas de blocs génériques)
+- [ ] Tester image upload (bouton, drag & drop, Ctrl+V)
 
-```bash
-# 1. Supprimer le code mort tracké
-git rm -r happy/sources/-zen/
+### Tests Android (via OTA)
+- [ ] Pousser OTA `--branch preview`
+- [ ] Ouvrir l'app → ouvrir une session Pi
+- [ ] Vérifier bouton image → action sheet gallery/caméra
+- [ ] Vérifier que les tools Pi sont affichés correctement
 
-# 2. Supprimer les fichiers non trackés du disque
-rm -rf happy/sources/trash/
-rm -f "C:Devhbactivity_top.txt" "C:Devhblogcat_recent.txt"
-rm -f wa-logs.txt mcp-logs.txt
-rm -f fix_send.py patch_default.py patch_layout.py patch_sessionview.py patch_storage_zen.py
-rm -rf logs/ tmp/
-
-# 3. Détracker les screenshots (57MB)
-git rm -r --cached happy/screenshots/
-echo "happy/screenshots/" >> .gitignore
-
-# 4. Commit
-git add -A && git commit -m "chore: remove dead code (-zen, trash, screenshots, debug files)"
-```
-
-### À documenter
-
-- Ajouter un `README.md` racine expliquant la structure fork
-- Mettre à jour `upstream-snapshot` : `git checkout upstream-snapshot && git merge upstream/main && git checkout master`
+### TypeScript
+- [ ] `yarn typecheck` — 0 nouvelles erreurs (les erreurs pré-existantes sur spec.ts et -zen sont connues)
 
 ---
 
-## 8. Estimation globale
+## Résumé des fichiers à modifier
 
-| Tâche | Effort | Espace récupéré |
-|-------|--------|----------------|
-| Nettoyage code mort (repo git) | 15 min | ~60 MB (screenshots + -zen) |
-| Nettoyage `C:\Dev` (3 doublons) | 10 min | **~15 GB** |
-| Nettoyage cache Gradle (optionnel) | 5 min | ~5-10 GB |
-| Archiver repo `happy-claude-client` | 5 min | — |
-| Documentation branches + README | 30 min | — |
-| Intégration Pi (Phase 1-2 : CLI) | 1 jour | — |
-| Intégration Pi (Phase 3 : mobile) | 0.5 jour | — |
-| **Total** | **~2 jours** | **~20-25 GB** |
+| Fichier | Changement | Phase |
+|---|---|---|
+| `happy/CLAUDE.md` | Ajouter sections Pi, Image Upload, OTA bypass, Upstream sync | 3 |
+| `happy/sources/components/AgentInput.tsx` | `agentType: 'pi'`, `isPi`, permission modes, agent label | 4a |
+| `happy/sources/text/_default.ts` | `agentInput.agent.pi: 'Pi'` | 4b |
+| `happy/sources/text/translations/*.ts` (×9) | `pi: 'Pi'` | 4b |
+| `happy/sources/components/Avatar.tsx` | `pi` dans `flavorIcons` | 4c |
+| `happy/sources/assets/images/icon-pi.png` | Créer icône Pi | 4c |
+| `happy/sources/app/(app)/session/[id]/info.tsx` | Pi label | 4d |
+| `happy/sources/components/tools/ToolView.tsx` | Pi detection, pas de masquage | 4e |
+| `happy/sources/components/tools/knownTools.tsx` | 5 outils Pi minuscules (`bash`, `write`, `grep`, `find`, `ls`) | 4f |
+| `happy/sources/-session/SessionView.tsx` | `isPiSession` | 4h |
+| `happy/sources/components/tools/PermissionFooter.tsx` | Pi dans isCodex | 4i |
+
+## Ordre d'exécution
+
+1. **CLAUDE.md** (15 min) — documentation d'abord
+2. **Pi UI** (agentType, isPi, avatar, traductions) — 30 min
+3. **Pi knownTools** (5 outils SDK minuscules + préfixe detection pour extensions) — 20 min
+4. **Typecheck + test web** — 15 min
+5. **Commit + OTA push** — 10 min
+6. **Issues GitHub** pour merge upstream (tracé pour session future)
+
+Total estimé : **~1h40**

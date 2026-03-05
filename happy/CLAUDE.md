@@ -470,3 +470,60 @@ When testing features on the S22 and finding bugs, follow this workflow for **ea
 ### TypeScript Note
 - `sources/sync/typesRaw.spec.ts` has ~112 pre-existing type errors (union type narrowing issues). These are NOT from our changes and do not affect the app.
 - `yarn typecheck` should show 0 errors excluding `typesRaw.spec.ts`
+
+## Upstream Sync Status
+
+- **Fork**: `theflysurfer/Happier` (branch `master`)
+- **Upstream**: `slopus/happy` (branch `main`)
+- **Status**: 1586 commits behind, 55 commits ahead (as of March 2026)
+- **-zen stubs**: Temporary stubs in `sources/-zen/` for build compatibility. Upstream has REMOVED these routes — stubs should be deleted after merging upstream.
+- **Key upstream features missing**: happy-wire protocol, v3 reliable HTTP messages, AsyncLock serialization, sandbox/yolo refactor, cuid2 session IDs, subagent lifecycle, PGlite standalone server.
+
+### OTA Push (bypassing typecheck)
+
+`yarn ota` runs typecheck which fails on pre-existing errors (-zen modules, spec files). To push directly:
+
+```bash
+# Use a .bat file for interactive_shell compatibility (parentheses in path)
+# Content of C:/Users/julien/ota-push.bat:
+#   cd /d "C:\...\happy"
+#   npx eas-cli@latest update --branch preview --message "description"
+```
+
+Note: EAS requires clean git tree (`requireCommit: true`). It will prompt to commit dirty files.
+
+## Pi Agent Integration
+
+Pi (`@mariozechner/pi-coding-agent`) is the 4th agent backend in Happy, alongside Claude, Codex, and Gemini.
+
+### CLI
+- Entry point: `happy-cli/src/pi/runPi.ts`
+- Backend: `happy-cli/src/pi/piBackend.ts` — wraps Pi SDK in-process (no child process, no MCP bridge)
+- Flavor: `'pi'` in session metadata
+- Command: `happy pi` to start Pi mode
+
+### Pi SDK Tools (lowercase)
+Native tools from the SDK: `read`, `bash`, `edit`, `write`, `grep`, `find`, `ls`, `exit_plan_mode`
+Extension tools are dynamic — names depend on user's installed extensions (e.g. `fast_search_*`, `pinchtab_*`, `web_search`).
+
+### ACP Message Flow
+Pi CLI → `session.sendAgentMessage('pi', ...)` → Happy server → mobile app
+Message types: `message`, `tool-call`, `tool-result`, `thinking`, `file-edit`, `task_started`, `task_complete`, `turn_aborted`
+
+## Image Upload
+
+Multimodal image support across all platforms.
+
+### Features
+- **Android**: Gallery picker + Camera (action sheet on button tap)
+- **Web**: Gallery picker button + Drag & drop + Clipboard paste (Ctrl+V)
+- **Preview**: Thumbnail row with remove button, up to 4 images
+- **Processing**: Canvas API on web, expo-image-manipulator on native
+- **Encoding**: Base64, max 2048px, JPEG 80% quality
+
+### Key Files
+- `sources/components/ImageUpload/useImagePicker.ts` — core hook
+- `sources/components/ImageUpload/ImageDropZone.tsx` — web drag & drop + paste (native `<div>` with DOM event listeners)
+- `sources/components/ImageUpload/ImagePreviewRow.tsx` — thumbnail UI
+- `sources/components/AgentInput.tsx` — button + drop zone wrapper
+- `sources/-session/SessionView.tsx` — wiring

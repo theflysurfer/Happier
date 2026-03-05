@@ -22,6 +22,7 @@ const flavorIcons = {
     claude: require('@/assets/images/icon-claude.png'),
     codex: require('@/assets/images/icon-gpt.png'),
     gemini: require('@/assets/images/icon-gemini.png'),
+    pi: require('@/assets/images/icon-claude.png'), // TODO: replace with Pi-specific icon
 };
 
 const styles = StyleSheet.create((theme) => ({

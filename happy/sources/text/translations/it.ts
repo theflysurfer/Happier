@@ -452,6 +452,7 @@ export const it: TranslationStructure = {
             claude: 'Claude',
             codex: 'Codex',
             gemini: 'Gemini',
+            pi: 'Pi',
         },
         model: {
             title: 'MODELLO',
@@ -476,6 +477,16 @@ export const it: TranslationStructure = {
             gpt5Low: 'GPT-5 Basso',
             gpt5Medium: 'GPT-5 Medio',
             gpt5High: 'GPT-5 Alto',
+        },
+        piPermissionMode: {
+            title: 'PI PERMISSION MODE',
+            default: 'Default',
+            readOnly: 'Read Only',
+            safeYolo: 'Safe YOLO',
+            yolo: 'YOLO',
+            badgeReadOnly: 'Read Only',
+            badgeSafeYolo: 'Safe YOLO',
+            badgeYolo: 'YOLO',
         },
         geminiPermissionMode: {
             title: 'MODALITÀ PERMESSI GEMINI',

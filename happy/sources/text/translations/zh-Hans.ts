@@ -425,6 +425,7 @@ export const zhHans: TranslationStructure = {
             claude: 'Claude',
             codex: 'Codex',
             gemini: 'Gemini',
+            pi: 'Pi',
         },
         model: {
             title: '模型',
@@ -449,6 +450,16 @@ export const zhHans: TranslationStructure = {
             gpt5Low: 'GPT-5 Low',
             gpt5Medium: 'GPT-5 Medium',
             gpt5High: 'GPT-5 High',
+        },
+        piPermissionMode: {
+            title: 'PI PERMISSION MODE',
+            default: 'Default',
+            readOnly: 'Read Only',
+            safeYolo: 'Safe YOLO',
+            yolo: 'YOLO',
+            badgeReadOnly: 'Read Only',
+            badgeSafeYolo: 'Safe YOLO',
+            badgeYolo: 'YOLO',
         },
         geminiPermissionMode: {
             title: 'GEMINI 权限模式',

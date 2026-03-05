@@ -173,6 +173,7 @@ function SessionViewLoaded({ sessionId, session }: { sessionId: string, session:
     const permissionMode = session.permissionMode || 'default';
     // Get model mode from session object - for Gemini sessions use explicit model, default to gemini-2.5-pro
     const isGeminiSession = session.metadata?.flavor === 'gemini';
+    const isPiSession = session.metadata?.flavor === 'pi';
     const modelMode = session.modelMode || (isGeminiSession ? 'gemini-2.5-pro' : 'default');
     const sessionStatus = useSessionStatus(session);
     const sessionUsage = useSessionUsage(sessionId);
