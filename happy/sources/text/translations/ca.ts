@@ -1030,6 +1030,12 @@ export const ca: TranslationStructure = {
         noChanges: 'No s\'han detectat canvis.',
     },
 
+    imageUpload: {
+        dropHere: 'Arrossega imatge aquí',
+        pickPhoto: 'Biblioteca de fotos',
+        takePhoto: 'Fer foto',
+        cancel: 'Cancel·lar',
+    },
     memory: {
         title: 'Memòria',
         claudeProcessMemory: 'Memòria del procés Claude',

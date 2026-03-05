@@ -1054,6 +1054,12 @@ export const ru: TranslationStructure = {
         noChanges: 'Изменения не обнаружены.',
     },
 
+    imageUpload: {
+        dropHere: 'Перетащите изображение сюда',
+        pickPhoto: 'Библиотека фото',
+        takePhoto: 'Сделать фото',
+        cancel: 'Отмена',
+    },
     memory: {
         title: 'Память',
         claudeProcessMemory: 'Память процесса Claude',

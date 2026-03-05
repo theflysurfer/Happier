@@ -1042,6 +1042,12 @@ export const en: TranslationStructure = {
         noChanges: 'No changes detected.',
     },
 
+    imageUpload: {
+        dropHere: 'Drop image here',
+        pickPhoto: 'Photo Library',
+        takePhoto: 'Take Photo',
+        cancel: 'Cancel',
+    },
     memory: {
         title: 'Memory',
         claudeProcessMemory: 'Claude Process Memory',

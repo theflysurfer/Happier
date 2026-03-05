@@ -25,10 +25,12 @@ interface UseImagePickerReturn {
     images: SelectedImage[];
     pickFromGallery: () => Promise<void>;
     pickFromCamera: () => Promise<void>;
+    addFromFiles: (files: File[]) => Promise<void>;
     removeImage: (index: number) => void;
     clearImages: () => void;
     getImagesAsAttachments: () => Promise<ImageAttachment[]>;
     isProcessing: boolean;
+    maxImages: number;
 }
 
 function getMediaType(uri: string, mimeType?: string): ImageAttachment['mediaType'] {
@@ -44,7 +46,50 @@ function getMediaType(uri: string, mimeType?: string): ImageAttachment['mediaTyp
     }
 }
 
-async function processImage(uri: string, width: number, height: number): Promise<{ uri: string; width: number; height: number; base64: string }> {
+async function processImageWeb(uri: string, width: number, height: number): Promise<{ uri: string; width: number; height: number; base64: string }> {
+    // Web implementation using Canvas API (more reliable than expo-image-manipulator on web)
+    return new Promise((resolve, reject) => {
+        const img = new (globalThis.Image || HTMLImageElement)();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+            // Use natural dimensions if width/height were 0
+            const naturalW = width || img.naturalWidth;
+            const naturalH = height || img.naturalHeight;
+
+            const needsResize = naturalW > MAX_IMAGE_SIZE || naturalH > MAX_IMAGE_SIZE;
+            let newWidth = naturalW;
+            let newHeight = naturalH;
+
+            if (needsResize) {
+                const ratio = Math.min(MAX_IMAGE_SIZE / naturalW, MAX_IMAGE_SIZE / naturalH);
+                newWidth = Math.round(naturalW * ratio);
+                newHeight = Math.round(naturalH * ratio);
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = newWidth;
+            canvas.height = newHeight;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                reject(new Error('Cannot get canvas context'));
+                return;
+            }
+            ctx.drawImage(img, 0, 0, newWidth, newHeight);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            const base64 = dataUrl.split(',')[1] || '';
+            resolve({
+                uri: dataUrl,
+                width: newWidth,
+                height: newHeight,
+                base64,
+            });
+        };
+        img.onerror = () => reject(new Error('Failed to load image for processing'));
+        img.src = uri;
+    });
+}
+
+async function processImageNative(uri: string, width: number, height: number): Promise<{ uri: string; width: number; height: number; base64: string }> {
     // Check if we need to resize
     const needsResize = width > MAX_IMAGE_SIZE || height > MAX_IMAGE_SIZE;
 
@@ -76,6 +121,13 @@ async function processImage(uri: string, width: number, height: number): Promise
     };
 }
 
+async function processImage(uri: string, width: number, height: number): Promise<{ uri: string; width: number; height: number; base64: string }> {
+    if (Platform.OS === 'web') {
+        return processImageWeb(uri, width, height);
+    }
+    return processImageNative(uri, width, height);
+}
+
 export function useImagePicker(maxImages: number = 4): UseImagePickerReturn {
     const [images, setImages] = useState<SelectedImage[]>([]);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -90,10 +142,14 @@ export function useImagePicker(maxImages: number = 4): UseImagePickerReturn {
             for (const asset of result.assets) {
                 if (images.length + newImages.length >= maxImages) break;
 
+                // On web, width/height may be 0 — use defaults that skip resize
+                const assetWidth = asset.width || 0;
+                const assetHeight = asset.height || 0;
+
                 const processed = await processImage(
                     asset.uri,
-                    asset.width,
-                    asset.height
+                    assetWidth,
+                    assetHeight
                 );
 
                 newImages.push({
@@ -145,6 +201,43 @@ export function useImagePicker(maxImages: number = 4): UseImagePickerReturn {
         await addImages(result);
     }, [addImages]);
 
+    // Add images from raw File objects (web: drag & drop, paste)
+    const addFromFiles = useCallback(async (files: File[]) => {
+        const imageFiles = files.filter(f => ALLOWED_MEDIA_TYPES.includes(f.type as any));
+        if (imageFiles.length === 0) return;
+
+        setIsProcessing(true);
+        try {
+            const newImages: SelectedImage[] = [];
+
+            for (const file of imageFiles) {
+                if (images.length + newImages.length >= maxImages) break;
+
+                // Read file as data URL
+                const uri = await new Promise<string>((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result as string);
+                    reader.onerror = () => reject(new Error('Failed to read file'));
+                    reader.readAsDataURL(file);
+                });
+
+                const processed = await processImage(uri, 0, 0);
+
+                newImages.push({
+                    uri: processed.uri,
+                    width: processed.width,
+                    height: processed.height,
+                    mediaType: getMediaType(file.name, file.type),
+                    base64: processed.base64,
+                });
+            }
+
+            setImages(prev => [...prev, ...newImages]);
+        } finally {
+            setIsProcessing(false);
+        }
+    }, [images.length, maxImages]);
+
     const removeImage = useCallback((index: number) => {
         setImages(prev => prev.filter((_, i) => i !== index));
     }, []);
@@ -167,9 +260,11 @@ export function useImagePicker(maxImages: number = 4): UseImagePickerReturn {
         images,
         pickFromGallery,
         pickFromCamera,
+        addFromFiles,
         removeImage,
         clearImages,
         getImagesAsAttachments,
         isProcessing,
+        maxImages,
     };
 }

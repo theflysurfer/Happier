@@ -1026,6 +1026,12 @@ export const en = {
         noChanges: 'No changes detected.',
     },
 
+    imageUpload: {
+        dropHere: 'Drop image here',
+        pickPhoto: 'Photo Library',
+        takePhoto: 'Take Photo',
+        cancel: 'Cancel',
+    },
     memory: {
         // Used by memory monitoring feature (session info + status bar)
         title: 'Memory',

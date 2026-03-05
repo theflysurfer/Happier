@@ -1033,6 +1033,12 @@ export const ja: TranslationStructure = {
         noChanges: '変更は検出されませんでした。',
     },
 
+    imageUpload: {
+        dropHere: '画像をここにドロップ',
+        pickPhoto: '写真ライブラリ',
+        takePhoto: '写真を撮る',
+        cancel: 'キャンセル',
+    },
     memory: {
         title: 'メモリ',
         claudeProcessMemory: 'Claude プロセスメモリ',

@@ -1032,6 +1032,12 @@ export const zhHans: TranslationStructure = {
         noChanges: '未检测到更改。',
     },
 
+    imageUpload: {
+        dropHere: '将图片拖放到这里',
+        pickPhoto: '照片库',
+        takePhoto: '拍照',
+        cancel: '取消',
+    },
     memory: {
         title: '内存',
         claudeProcessMemory: 'Claude 进程内存',

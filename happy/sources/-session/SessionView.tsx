@@ -219,10 +219,13 @@ function SessionViewLoaded({ sessionId, session }: { sessionId: string, session:
     const {
         images,
         pickFromGallery,
+        pickFromCamera,
+        addFromFiles,
         removeImage,
         clearImages,
         getImagesAsAttachments,
-        isProcessing: isImageProcessing
+        isProcessing: isImageProcessing,
+        maxImages,
     } = useImagePicker(4);
 
     // Handle dismissing CLI version warning
@@ -358,8 +361,11 @@ function SessionViewLoaded({ sessionId, session }: { sessionId: string, session:
             // Image picker props
             images={images}
             onImagePickerPress={pickFromGallery}
+            onImageCameraPress={pickFromCamera}
+            onImageFilesAdded={addFromFiles}
             onImageRemove={removeImage}
             isImageProcessing={isImageProcessing}
+            maxImages={maxImages}
             // Autocomplete configuration
             autocompletePrefixes={['@', '/']}
             autocompleteSuggestions={(query) => getSuggestions(sessionId, query)}

@@ -1,6 +1,6 @@
 import { Ionicons, Octicons } from '@expo/vector-icons';
 import * as React from 'react';
-import { View, Platform, useWindowDimensions, ViewStyle, Text, ActivityIndicator, TouchableWithoutFeedback, Image as RNImage, Pressable } from 'react-native';
+import { View, Platform, useWindowDimensions, ViewStyle, Text, ActivityIndicator, TouchableWithoutFeedback, Image as RNImage, Pressable, Alert } from 'react-native';
 import { Image } from 'expo-image';
 import { layout } from './layout';
 import { MultiTextInput, KeyPressEvent } from './MultiTextInput';
@@ -25,7 +25,7 @@ import { AIBackendProfile, getProfileEnvironmentVariables, validateProfileForAge
 import { getBuiltInProfile } from '@/sync/profileUtils';
 import { formatBytes } from '@/utils/formatBytes';
 import { UnifiedCommandPalette, UnifiedCommand } from './UnifiedCommandPalette';
-import { ImagePreviewRow, type SelectedImage } from './ImageUpload';
+import { ImagePreviewRow, ImageDropZone, type SelectedImage } from './ImageUpload';
 
 interface AgentInputProps {
     value: string;
@@ -79,8 +79,11 @@ interface AgentInputProps {
     // Image upload props
     images?: SelectedImage[];
     onImagePickerPress?: () => void;
+    onImageCameraPress?: () => void;
+    onImageFilesAdded?: (files: File[]) => void;
     onImageRemove?: (index: number) => void;
     isImageProcessing?: boolean;
+    maxImages?: number;
     // Memory monitoring
     memoryLevel?: 'normal' | 'elevated' | 'high' | 'critical';
     memoryRssBytes?: number;
@@ -484,6 +487,35 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
             setIsAborting(false);
         }
     }, [props.onAbort]);
+
+    // Handle image picker press — on mobile, show action sheet (gallery + camera)
+    const handleImagePickerPress = React.useCallback(() => {
+        hapticsLight();
+        if (Platform.OS === 'web') {
+            // On web, just open gallery (drag & drop / paste cover other methods)
+            props.onImagePickerPress?.();
+        } else {
+            // On mobile, show action sheet with gallery + camera options
+            Alert.alert(
+                '',
+                undefined,
+                [
+                    {
+                        text: t('imageUpload.pickPhoto'),
+                        onPress: () => props.onImagePickerPress?.(),
+                    },
+                    {
+                        text: t('imageUpload.takePhoto'),
+                        onPress: () => props.onImageCameraPress?.(),
+                    },
+                    {
+                        text: t('imageUpload.cancel'),
+                        style: 'cancel',
+                    },
+                ]
+            );
+        }
+    }, [props.onImagePickerPress, props.onImageCameraPress]);
 
     // Handle keyboard navigation
     const handleKeyPress = React.useCallback((event: KeyPressEvent): boolean => {
@@ -1022,7 +1054,11 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
                     </View>
                 )}
 
-                {/* Box 2: Action Area (Input + Send) */}
+                {/* Box 2: Action Area (Input + Send) — wrapped in ImageDropZone for web drag & drop + paste */}
+                <ImageDropZone
+                    onFilesAdded={props.onImageFilesAdded || (() => {})}
+                    isFull={(props.images?.length || 0) >= (props.maxImages || 4)}
+                >
                 <View style={styles.unifiedPanel}>
                     {/* Image previews (if any) */}
                     {(props.images?.length || props.isImageProcessing) && (
@@ -1186,12 +1222,9 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
                                 )}
 
                                 {/* Image Picker Button */}
-                                {props.onImagePickerPress && Platform.OS !== 'web' && (
+                                {props.onImagePickerPress && (
                                     <Pressable
-                                        onPress={() => {
-                                            hapticsLight();
-                                            props.onImagePickerPress?.();
-                                        }}
+                                        onPress={handleImagePickerPress}
                                         hitSlop={{ top: 5, bottom: 10, left: 0, right: 0 }}
                                         style={(p) => ({
                                             flexDirection: 'row',
@@ -1285,6 +1318,7 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
                         </View>
                     </View>
                 </View>
+                </ImageDropZone>
             </View>
         </View>
     );
